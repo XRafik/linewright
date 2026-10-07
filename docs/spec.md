@@ -1,0 +1,425 @@
+# Linewright product spec
+
+Linewright is a spec-driven software factory: a server that watches a GitHub
+repository and runs coding agents that turn spec changes and issues into
+finished software, delivered as pull requests.
+
+## Vision
+
+A software factory: people write the specification and file the bugs, and the
+factory produces the finished software. Agents plan, implement, review and
+verify each other's work, with enough of them and enough automation that the
+result needs little or no human review.
+
+This spec describes the first version: from a merged spec change or an issue
+to a pull request that agents have reviewed and that passes CI. A person
+merges it, or sends it back with comments the factory addresses.
+
+## Problem Statement
+
+I keep the specification of my software as Markdown in its repository, and
+coding agents build from it. Reviewing what they build is the slow part: every
+change comes back as a PR for me to read, understand and correct, and that is
+where most of my time goes. The quality that would make review quick, work
+that has been reviewed, tested and fixed before I see it, takes more agent
+sessions than one person drives by hand. Driving them costs too: each step
+between a spec change and a PR is a session I start, wait for and relay, so
+work waits for me to be at a keyboard. Customer issues wait the same way:
+someone has to read, classify, verify and brief before an agent can start.
+
+## Solution
+
+A server that polls GitHub and drives a pipeline of agent sessions from a
+merged spec change or an issue to a pull request that is reviewed, green and
+ready for a person.
+
+- **Spec in, PR out.** A merged spec change or a labeled issue starts the
+  pipeline and a pull request ends it. Between the two the factory runs on
+  its own; when it cannot continue, it hands the item back with a label and a
+  comment that says why.
+- **The spec is how the maintainer steers.** Agents build from the spec and
+  leave it as it is; a spec that needs changing becomes an issue for the
+  maintainer.
+- **Reviewed before a person sees it.** Agent review, the repository's own
+  checks and CI all pass before a PR is marked ready.
+- **Everything shows in GitHub.** Every state is a label, an assignee or a
+  pull request, so GitHub's UI shows what the factory is doing and lets a
+  person change it, and a comment on the issue or PR records every outcome.
+  Nothing in the repository points at the factory: its labels, branches and
+  comments are ones a person could have written.
+- **Each stage is a fresh agent session with a brief**, and work is cut so
+  that every session stays in its smart zone, the part of its context window
+  where it still works at full quality.
+- **Unattended.** Agents run without permission prompts, directly on a host
+  or in a container, as the operator chooses.
+- **Runs again on request.** A spec change the factory handled can be
+  captured as a case and run through the whole pipeline on a machine, with
+  every agent's trace kept, so the briefs are tuned against real cases.
+
+User stories are told from the operator's point of view.
+
+The pipeline, end to end:
+
+```mermaid
+flowchart LR
+    spec[Spec PR merged] --> tickets[Tickets]
+    issue[Issue labeled needs-triage] --> triage[Triage]
+    triage --> ready[Issue labeled ready-for-agent]
+    tickets --> ready
+    ready --> impl[Implement, review, commit]
+    impl --> draft[Draft PR, CI green]
+    draft --> review[Ready for review]
+    review -- person comments --> impl
+    review -- person merges --> done[Issue closed]
+```
+
+## Repository
+
+What Linewright needs from the repository it works on, and how people work
+it: labels start and stop work, and pull requests show it.
+
+### User Stories
+
+1. As an operator, I want to point Linewright at a repository and have it create what it needs, so that setup is a token and a flag.
+2. As an operator, I want the repository to stay usable by people at the same time, so that the factory shares the repository rather than owning it.
+3. As an operator, I want Linewright to refuse to start when it cannot work, so that a misconfiguration is loud.
+4. As an operator, I want to start work by applying one label and stop it by removing it, so that control needs nothing but GitHub.
+
+### Decisions
+
+- Requirements:
+  - A GitHub repository.
+  - A **machine user**: a GitHub user account for Linewright, with a token
+    that lets it push branches, open pull requests, and read and write
+    issues and labels. Everything Linewright does on GitHub carries that
+    identity, so the maintainer can review its PRs and see its claims as
+    assignments.
+  - Spec files: tracked Markdown matching the spec glob (default
+    `docs/**/*.md`).
+- Used when present: the files the agents' briefs rely on, `CODING_STANDARDS.md`
+  (what code review holds changes to) and `GLOSSARY.md` (the vocabulary
+  agents read before exploring), and CI as checks on pull requests. The agent instructions the runtime reads on its own
+  (`AGENTS.md`, `CLAUDE.md`) apply as in any session.
+- Labels. Linewright creates any that are missing at startup and never renames
+  or deletes one. Labels only Linewright uses are prefixed `linewright:`.
+
+  | label | meaning | set by |
+  |---|---|---|
+  | `needs-triage` | new, not yet assessed | reporter's issue template, maintainer |
+  | `needs-info` | waiting on the reporter | Linewright |
+  | `ready-for-agent` | actionable: Linewright may claim it | maintainer, Linewright |
+  | `ready-for-human` | the maintainer must act or decide | Linewright |
+  | `bug`, `enhancement` | category, in repositories without issue types | Linewright (triage), maintainer |
+  | `linewright:spec-processed` | this merged PR's spec changes have been ticketed | Linewright |
+
+- For issues, the human interface is two labels: `needs-triage` asks for
+  triage and `ready-for-agent` asks for implementation. Spec changes need no
+  label: every merged pull request that touches the spec is picked up.
+  Removing `ready-for-agent`, unassigning the machine user or closing the
+  issue stops its work.
+- Machine state is derived from GitHub, never labeled. An issue is
+  **claimed** when the machine user is among its assignees, and **in review**
+  when an open pull request by the machine user closes it.
+- Startup checks: the token can push to the repository; otherwise Linewright
+  exits with an error.
+- One Linewright per repository.
+
+The lifecycle of an issue. Labeled states are labels; `claimed` and
+`in review` are derived as above.
+
+```mermaid
+stateDiagram-v2
+    [*] --> needs_triage: reporter files an issue
+    [*] --> ready_for_agent: maintainer labels, or Linewright creates a ticket
+    needs_triage --> ready_for_agent: triage, clear and within the spec
+    needs_triage --> needs_info: triage, reporter must answer
+    needs_triage --> ready_for_human: triage, maintainer must decide
+    needs_info --> needs_triage: reporter comments
+    ready_for_human --> ready_for_agent: maintainer answers
+    ready_for_human --> needs_triage: maintainer asks for another triage
+    ready_for_agent --> claimed: unblocked, machine user assigned
+    claimed --> in_review: PR opened and green
+    claimed --> ready_for_human: cannot finish
+    in_review --> claimed: person comments on the PR
+    in_review --> [*]: PR merged, issue closed
+    in_review --> ready_for_human: PR closed unmerged
+```
+
+## Sources of work
+
+### User Stories
+
+1. As an operator, I want a merged change to the spec to start agents that bring the code in step with it, so that writing the spec is how I build.
+2. As an operator, I want new issues triaged by an agent, so that reporters get an answer and clear issues become work without me.
+3. As an operator, I want to hand any issue to the factory by labeling it, so that I decide what gets built.
+4. As an operator, I want a spec change that is already implemented to produce no work, so that implementing by hand stays possible.
+
+### Decisions
+
+- The spec is the tracked files matching the spec glob.
+- A **spec change** is a pull request that was merged into the default
+  branch, touched at least one spec file, was merged within the lookback
+  window (default 7 days) and has no `linewright:spec-processed` label. PRs
+  authored by the machine user are skipped. The spec as merged is what gets
+  built; a push straight to the default branch is the maintainer's own
+  change, outside the factory.
+- Issues enter in two ways: with `needs-triage`, which asks for triage, and
+  with `ready-for-agent`, which asks for implementation once the issue is
+  unclaimed and unblocked.
+- Linewright polls, at an interval (default 60 s).
+
+## Triage
+
+### User Stories
+
+1. As an operator, I want new issues classified and their claims verified, so that only real, clear work reaches an implementer.
+2. As an operator, I want reporters asked for what is missing and their answers picked up, so that I am not the go-between.
+3. As an operator, I want an issue that needs my decision handed to me with a recommendation, so that my part is a decision, not research.
+4. As an operator, I want duplicates and already-fixed issues flagged rather than closed, so that no reporter is turned away by a machine.
+
+### Decisions
+
+- Triage runs on `needs-triage` issues not authored by the machine user
+  (tickets Linewright creates are already briefed).
+- The agent reads the issue and its comments, the codebase and the spec. It
+  categorizes, verifies the claim (reproduces a bug, runs the tests, checks
+  whether the behavior already exists) and ends in one of three states:
+  - `ready-for-agent`, with a **triage brief** comment: summary, current and
+    desired behavior, acceptance criteria, out of scope.
+  - `needs-info`, with a comment addressed to the reporter: what is
+    established, what is still needed.
+  - `ready-for-human`, with a recommendation: the questions a maintainer must
+    answer, or why the issue is not for an agent (duplicate, already
+    implemented, needs a spec change, should be rejected).
+- The category is the repository's issue type (Bug, Feature, Task) where the
+  repository has issue types, and the `bug` or `enhancement` label otherwise.
+- Triage leaves issues open and repository files as they are.
+- `needs-info` is the one state a comment leaves: when anyone other than the
+  machine user comments after Linewright's last triage comment, the issue is
+  triaged again. Every other handoff from person to factory is a label the
+  maintainer sets: a `ready-for-human` issue goes back with `ready-for-agent`
+  (implement as decided) or `needs-triage` (triage again).
+
+## Tickets
+
+### User Stories
+
+1. As an operator, I want a spec change cut into tickets an agent session finishes within its smart zone, so that the work is done by agents at their sharpest; that each PR is small enough to review is a welcome side effect.
+2. As an operator, I want tickets ordered by dependency and worked in that order, so that each builds on merged work.
+3. As an operator, I want one place that shows a spec change's progress, so that I know when it is done.
+
+### Decisions
+
+- For each spec change an agent reads the PR's spec diff, the spec and the
+  codebase and proposes tickets: vertical slices sized to a session's smart
+  zone, with code that already matches the spec producing none.
+- One **tracking issue** per spec change with tickets: "Spec change: <PR
+  title>", linking the PR and listing the tickets, with no role label. Each
+  ticket is a sub-issue of it, states what to build and its acceptance
+  criteria, carries `ready-for-agent`, and is linked to the tickets it is
+  blocked by with GitHub's issue dependencies.
+- The PR is labeled `linewright:spec-processed` once its tickets exist, also
+  when there are none, in which case no tracking issue is created.
+- A ticket is claimable when every issue blocking it is closed. Linewright
+  closes the tracking issue when all its sub-issues are closed.
+- The decomposition is Linewright's responsibility: it runs from a merged
+  spec change to the ready PRs with no human step, and a wrong set of tickets
+  from a good spec is a defect in Linewright.
+
+## Implementation
+
+### User Stories
+
+1. As an operator, I want each ticket implemented on its own branch from a fresh checkout, so that runs never interfere with each other or with my working copy.
+2. As an operator, I want the work reviewed by agents and passing the repository's checks before a PR exists, so that the first version I see has been through review.
+3. As an operator, I want the spec left as it is by agents, so that it stays mine.
+4. As an operator, I want an agent that cannot finish to hand the ticket back with the reason, so that nothing stalls silently.
+5. As an operator, I want several tickets worked at once up to a ceiling I set, so that throughput is mine to choose.
+
+### Decisions
+
+- Claiming is adding the machine user as an assignee. A **fresh run** (no
+  open pull request for the ticket) starts from a fresh clone of the default
+  branch on a new branch for the ticket, replacing any earlier one.
+- The implementer reads the ticket and its comments (the triage brief,
+  earlier handbacks), implements, runs the repository's checks, has the work reviewed
+  in fresh contexts for both standards and spec, addresses the findings and
+  commits. How many review rounds it takes is its judgment, bounded by the
+  session timeout.
+- Spec contract: a run whose branch changes any spec file fails, and the
+  ticket goes to `ready-for-human` with the diff named.
+- A spec gap that blocks the ticket (the spec cannot decide it) sends the
+  ticket to `ready-for-human` with the question; the branch is kept. A gap
+  that does not block it becomes a separate `ready-for-human` issue
+  describing the needed spec change, and the ticket continues.
+- A session's result the manager cannot parse goes back to the session with
+  the parse error, so it can answer again (default once).
+- Any unexpected end (crash, timeout, the agent giving up, a result that
+  still does not parse) sends the ticket to `ready-for-human` with the
+  reason and the tail of the log. Infrastructure failures are retried once
+  first.
+- Removing `ready-for-agent`, unassigning the machine user or closing the
+  issue cancels its run; the branch is kept.
+- After a restart, a claimed ticket with no open PR and no live run starts a
+  fresh run.
+- Concurrency is a ceiling on simultaneous runs (default 4); each agent
+  session has a timeout (default 30 min).
+
+## Pull requests
+
+### User Stories
+
+1. As an operator, I want the PR to be a draft until CI passes, so that I am only asked to review green PRs.
+2. As an operator, I want CI failures fixed by the agent, so that red CI costs me nothing.
+3. As an operator, I want my review comments addressed and answered where I wrote them, so that review is a conversation with the branch.
+4. As an operator, I want branches kept up to date with the default branch the way my repository does it, so that merging is a click.
+5. As an operator, I want to merge myself, so that nothing lands without me.
+6. As an operator, I want closing a PR to mean rejection, so that the factory does not redo what I refused.
+
+### Decisions
+
+- When the implementer is done the manager pushes its branch and opens a
+  **draft PR** from it to the default branch: title from the ticket, body written
+  by the agent for the diff, ending in `Closes #N`.
+- CI: wait for check runs and commit statuses on the head to appear (grace
+  period default 5 min; none means the repository has no CI for drafts) and
+  to complete (default 6 h). A failure starts a fix session, at most 2
+  attempts, then `ready-for-human` naming the failing check.
+- Green: the PR is marked ready for review, and review is requested from the
+  ticket's human assignees.
+- **Rework**: a comment or review from anyone other than the machine user,
+  posted after Linewright's last push, starts a rework run. It brings the
+  branch up to date, addresses the comments, pushes, replies in each thread
+  and re-requests review. Comments from people are always addressed; those
+  from other bots at the implementer's judgment, and it may answer that a
+  comment needs no change. The implementer resolves the threads bots opened
+  and leaves people's threads for them to resolve.
+- **Keeping up to date**: every run first brings the branch up to date with
+  the default branch, and a PR GitHub reports behind or unmergeable gets a
+  run for that alone, mechanical unless there is a conflict. Whether that is
+  a rebase or a merge of the default branch into the branch follows the
+  repository's settings (rebase where it requires linear history), and can
+  be set explicitly. Merging the PR is the maintainer's, with whatever method
+  the repository allows.
+- Commits a person pushes to the branch are kept: every run starts from the
+  branch as it is.
+- A merged PR closes the issue through `Closes #N`. A PR closed without
+  merging sends the issue to `ready-for-human`.
+
+## Operation
+
+### User Stories
+
+1. As an operator, I want one binary configured by flags, environment variables or a config file, so that a deployment is reproducible.
+2. As an operator, I want a one-shot mode, so that I can test a cycle by hand or run it from cron.
+3. As an operator, I want to run it directly on a machine or inside a container, so that I choose the isolation.
+4. As an operator, I want to run it on Linux in production and on macOS while developing.
+
+### Decisions
+
+- The binary is `linewright`, with `serve` (poll until stopped), `once` (one
+  poll cycle, then exit) and `status` (list the work in flight, read from
+  GitHub).
+- Configuration: every setting is a flag, an environment variable
+  (`LINEWRIGHT_<FLAG>`) or a key in a TOML config file (`--config`, default
+  `linewright.toml` in the working directory), with precedence flag, then
+  environment, then file, then default. Credentials are the environment
+  variables their tools already use, so an existing setup is picked up:
+  `GITHUB_TOKEN` or `GH_TOKEN` as `gh` reads them, and `ANTHROPIC_API_KEY`.
+
+  | setting | default |
+  |---|---|
+  | `repo` (`owner/name`) | required |
+  | `poll-interval` | 60s |
+  | `spec-glob` | `docs/**/*.md` |
+  | `spec-lookback` | 7d |
+  | `max-workers` | 4 |
+  | `work-dir` | a temporary directory |
+  | `model` | one model for every stage |
+  | `briefs` (a directory) | the briefs Linewright ships |
+  | `session-timeout` | 30m |
+  | `result-retries` | 1 |
+  | `ci-grace` | 5m |
+  | `ci-timeout` | 6h |
+  | `ci-attempts` | 2 |
+  | `update-branch` (`rebase`, `merge`) | from the repository's settings |
+  | `log-format` (`text`, `json`) | `text` on a terminal, `json` otherwise |
+
+- Linewright runs wherever `git`, the agent runtime and the project's
+  toolchain are on the path: directly on a machine, or in a container whose
+  image the operator builds with those in it. Linewright publishes a base
+  image with everything but the project's toolchain to build from.
+- Agents run without permission prompts; the container is the isolation
+  when one is used.
+- Unix-like systems: Linux is the deployment target, macOS a development
+  host.
+
+## Replay
+
+Tuning the briefs against real cases: a person picks spec changes whose PRs
+they were unhappy with, and a coding agent runs them again with changed
+briefs, reads the results and the traces, and iterates.
+
+### User Stories
+
+1. As an operator, I want to capture a spec change the factory handled as a case on disk, so that I can run it again.
+2. As an operator, I want to run a case through the whole pipeline on my machine with GitHub out of the loop, so that a change to a brief is tried in minutes.
+3. As an operator, I want a run's results, the tickets, pull requests, comments and every agent session's trace, as files, so that a coding agent can read them, judge them and change the briefs.
+4. As an operator, I want to edit the briefs between runs without rebuilding Linewright, so that iterating is editing a file.
+
+### Decisions
+
+- A **case** is a directory holding the repository at a commit and the
+  event: a spec change (the PR's title, body and the commits it merged) or an
+  issue (its text and comments). `linewright capture <repo>#<N> DIR` writes
+  one from GitHub; run on the factory's machine it includes the traces of the
+  sessions that handled it.
+- `linewright replay CASE --out DIR` runs the pipeline end to end against a
+  **local store** seeded from the case: the same reconcile loop as `serve`,
+  run until nothing is left to do rather than on a timer, ending when every
+  pull request is ready for review or every issue is handed back. The
+  implementer's own run of the repository's checks stands in for CI.
+- The output directory holds the store's final state as files (issues with
+  their labels and comments, pull requests with their diffs and comments) and
+  each session's brief, result and full trace, in plain formats (JSON,
+  Markdown, diffs) a coding agent reads directly.
+- Replay runs the whole pipeline; what a stage did is read from its trace.
+- Agents see only the case: a session reads issues, comments and spec diffs
+  from its brief and hands back tickets, comments and PR bodies in its
+  result, and the manager alone writes to the store. In replay nothing
+  points at GitHub, so a session reads no newer state than the case.
+- Briefs are files Linewright reads at startup from the `briefs` directory
+  setting, so a change needs no rebuild.
+- In production every session's trace is kept under the work directory.
+
+## Visibility
+
+### User Stories
+
+1. As an operator, I want every outcome recorded on the issue or PR it concerns, so that GitHub is the audit trail.
+2. As an operator, I want the server's log to say what it is doing and why, so that I can debug it without GitHub.
+
+### Decisions
+
+- Linewright comments at every outcome: a triage result, tickets created (on
+  the tracking issue and the spec PR), a ticket handed back and why, a PR
+  made ready, a rework done. Every comment opens with the marker line
+  `> *Linewright, <stage>*` so people and the manager can tell its comments
+  from others. Claims and PRs need no comment: the assignee and the PR are
+  the record.
+- Comments contain only what belongs to the repository: no run ids, hosts or
+  links to the factory.
+- The server logs each decision and action, readable for a person tailing it
+  and structured (JSON lines) for machines, by the `log-format` setting.
+
+## Out of scope
+
+Direction, not the first version:
+
+- Webhooks instead of polling.
+- Merging on its own once CI passes; today a person merges.
+- One container per run, instead of agents as processes beside the manager.
+- Starting spec processing from a label on the PR instead of from any merged
+  spec PR, for repositories shared with people who don't want the factory.
+- Per-repository overrides of the agents' briefs.
+- Forges other than GitHub.

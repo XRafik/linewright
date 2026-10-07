@@ -20,6 +20,19 @@ layer that calls them.
 
 ## Testing
 
+### Where tests go
+
+A test belongs in one of three places. Everything else is covered through
+them and gets no test of its own.
+
+- **The functional core, end to end on its data model**: give the decision
+  function a state of the world and check the decisions it returns.
+- **The system, end to end at the user's level**: drive it as a user would (a
+  labeled issue, a merged PR) against a fake of each external system (GitHub,
+  the agent runtime, the clock) and check what the user would see.
+- **Internal libraries**: a frequently used internal abstraction, not a helper
+  function.
+
 ### Anti-patterns
 
 - **Tautological**: the assertion recomputes the expected value the way the
