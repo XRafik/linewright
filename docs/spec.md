@@ -288,7 +288,8 @@ stateDiagram-v2
 - Green: the PR is marked ready for review, and review is requested from the
   ticket's human assignees.
 - **Rework**: a comment or review from anyone other than the machine user,
-  posted after Linewright's last push, starts a rework run. It brings the
+  posted after Linewright's last push, starts a rework run; a review that
+  only approves starts nothing. The run brings the
   branch up to date, addresses the comments, pushes, replies in each thread
   and re-requests review. Comments from people are always addressed; those
   from other bots at the implementer's judgment, and it may answer that a
@@ -334,7 +335,7 @@ stateDiagram-v2
   | `spec-glob` | `docs/**/*.md` |
   | `spec-lookback` | 7d |
   | `max-workers` | 4 |
-  | `work-dir` | a temporary directory |
+  | `work-dir` | `linewright/` under the user's data directory |
   | `model` | one model for every stage |
   | `briefs` (a directory) | the briefs Linewright ships |
   | `session-timeout` | 30m |
@@ -390,7 +391,9 @@ briefs, reads the results and the traces, and iterates.
   points at GitHub, so a session reads no newer state than the case.
 - Briefs are files Linewright reads at startup from the `briefs` directory
   setting, so a change needs no rebuild.
-- In production every session's trace is kept under the work directory.
+- In production every session's trace is kept under the work directory,
+  outliving the run and the process, so a case can be captured with its
+  traces later.
 
 ## Visibility
 
@@ -418,6 +421,8 @@ Direction, not the first version:
 
 - Webhooks instead of polling.
 - Merging on its own once CI passes; today a person merges.
+- One session for a whole spec change. Tickets exist to keep each session in
+  its smart zone; as that zone grows, a spec change may need no cutting.
 - One container per run, instead of agents as processes beside the manager.
 - Starting spec processing from a label on the PR instead of from any merged
   spec PR, for repositories shared with people who don't want the factory.
