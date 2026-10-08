@@ -62,8 +62,8 @@ async fn run(command: Command, config: Config) -> Result<()> {
     match command {
         Command::Serve => {
             // Listening before startup, which talks to GitHub: in a container
-            // `linewright` is PID 1, which the kernel sends no signal it has
-            // no handler for.
+            // `linewright` can be PID 1, which the kernel sends no signal it
+            // has no handler for.
             let mut signals = StopSignals::new().context("listening for stop signals")?;
             let mut factory = tokio::select! {
                 factory = start(&config) => factory?,
