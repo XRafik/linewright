@@ -1,6 +1,6 @@
 //! The manager: each poll takes a snapshot of the store, asks the reconcile
 //! step what to do, and does it, starting runs as tasks and holding only the
-//! runs in flight between polls (`docs/architecture.md`).
+//! runs in flight between polls (`docs/specs/architecture.md`).
 
 use std::collections::HashMap;
 use std::path::PathBuf;

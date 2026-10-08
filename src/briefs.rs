@@ -1,5 +1,5 @@
 //! The briefs: one Markdown file per stage, read at startup from the `briefs`
-//! setting so a change needs no rebuild (`docs/spec.md`, "Replay"). The ones
+//! setting so a change needs no rebuild (`docs/specs/product.md`, "Replay"). The ones
 //! Linewright ships live in `briefs/` and are built in.
 
 use std::path::Path;

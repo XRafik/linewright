@@ -1,6 +1,6 @@
 //! The functional core: one poll's decisions as a pure function of the
-//! store's snapshot, the runs in flight and the clock (`docs/architecture.md`,
-//! "Functional core, imperative shell"). The rules are `docs/spec.md`'s.
+//! store's snapshot, the runs in flight and the clock (`docs/specs/architecture.md`,
+//! "Functional core, imperative shell"). The rules are `docs/specs/product.md`'s.
 
 use chrono::TimeDelta;
 

@@ -1,5 +1,5 @@
 //! The agent runtime: headless coding-agent sessions, one per stage, each in
-//! its own clone (`docs/architecture.md`, "Agents are headless Claude Code
+//! its own clone (`docs/specs/architecture.md`, "Agents are headless Claude Code
 //! sessions").
 
 pub mod claude;

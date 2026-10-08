@@ -1,5 +1,5 @@
 //! The facts Linewright decides on: a snapshot of the store (see
-//! `docs/architecture.md`, "The store is an interface"). Every machine state
+//! `docs/specs/architecture.md`, "The store is an interface"). Every machine state
 //! the spec names (claimed, in review) is derived from these facts, never
 //! stored.
 
@@ -52,7 +52,7 @@ impl fmt::Display for Login {
     }
 }
 
-/// The labels of `docs/spec.md`, "Repository".
+/// The labels of `docs/specs/product.md`, "Repository".
 pub mod label {
     pub const NEEDS_TRIAGE: &str = "needs-triage";
     pub const NEEDS_INFO: &str = "needs-info";

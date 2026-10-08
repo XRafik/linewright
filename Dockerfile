@@ -1,6 +1,6 @@
 # The base image Linewright publishes: linewright, git and the agent runtime.
 # Build your own image FROM it with your project's toolchain added, so the
-# agents can build and test your code (docs/spec.md, "Operation").
+# agents can build and test your code (docs/specs/product.md, "Operation").
 
 FROM rust:1-bookworm AS build
 WORKDIR /src

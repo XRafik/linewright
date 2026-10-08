@@ -1,5 +1,5 @@
 //! What a session hands back: its final message is a JSON object the manager
-//! parses into one of these types (`docs/architecture.md`, "Agents read
+//! parses into one of these types (`docs/specs/architecture.md`, "Agents read
 //! through the brief and write through the result"). A message that does not
 //! parse yields the error to send back to the session.
 

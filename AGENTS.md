@@ -6,9 +6,10 @@ See `README.md` for what it does.
 
 This project uses specification-driven development.
 
-- `docs/spec.md`: the product spec: problem, user stories and product decisions.
-- `docs/architecture.md`: the architecturally significant decisions, the ones
-  costly to change later, e.g. languages and frameworks.
+- `docs/specs/product.md`: the product spec: problem, user stories and product
+  decisions.
+- `docs/specs/architecture.md`: the architecturally significant decisions, the
+  ones costly to change later, e.g. languages and frameworks.
 - `GLOSSARY.md`: the vocabulary the specs and the code use, each term defined
   once.
 

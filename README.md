@@ -8,8 +8,9 @@ changes the spec (`docs/**/*.md` by default) is cut into tickets; an issue
 labeled `needs-triage` is triaged; an issue labeled `ready-for-agent` is
 implemented, reviewed by agents, and delivered as a pull request that is green
 and ready for your review. You merge it, or comment and the factory reworks it.
-What it does and why is in [`docs/spec.md`](docs/spec.md); the decisions behind
-the code are in [`docs/architecture.md`](docs/architecture.md).
+What it does and why is in [`docs/specs/product.md`](docs/specs/product.md);
+the decisions behind the code are in
+[`docs/specs/architecture.md`](docs/specs/architecture.md).
 
 ## Running it
 

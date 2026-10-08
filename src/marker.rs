@@ -1,4 +1,4 @@
-//! The marker line that opens every Linewright comment (`docs/spec.md`,
+//! The marker line that opens every Linewright comment (`docs/specs/product.md`,
 //! "Visibility"), so people and the manager can tell its comments from
 //! others.
 

@@ -1,4 +1,4 @@
-//! The tracking issue of a spec change (`docs/spec.md`, "Tickets"): its
+//! The tracking issue of a spec change (`docs/specs/product.md`, "Tickets"): its
 //! title and body, which the manager writes and a store reads back
 //! ([`crate::domain::Filed`]) to find the spec change it belongs to.
 

@@ -1,6 +1,6 @@
 //! A session's prompt: its stage's brief, the briefs it builds on, the task
 //! (everything the session needs from the store) and the result contract the
-//! manager parses (`docs/architecture.md`, "Agents read through the brief and
+//! manager parses (`docs/specs/architecture.md`, "Agents read through the brief and
 //! write through the result").
 
 use std::fmt::Write;

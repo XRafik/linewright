@@ -1,5 +1,5 @@
 //! The store: where every fact Linewright decides on lives and every outcome
-//! it records goes (`docs/architecture.md`, "The store is an interface").
+//! it records goes (`docs/specs/architecture.md`, "The store is an interface").
 //! GitHub is the production store; a local store of plain files serves replay
 //! and tests.
 
