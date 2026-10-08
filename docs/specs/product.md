@@ -335,8 +335,8 @@ stateDiagram-v2
 - The binary is `linewright`, with `serve` (poll until stopped), `once` (one
   poll cycle, then exit) and `status` (list the work in flight, read from
   GitHub).
-- Ctrl-C stops `serve` once the action in progress is done, cancelling the
-  runs in flight; a second Ctrl-C exits at once.
+- SIGINT (Ctrl-C) or SIGTERM stops `serve` once the action in progress is
+  done, cancelling the runs in flight; a second one exits at once.
 - Configuration: every setting is a flag, an environment variable
   (`LINEWRIGHT_<FLAG>`) or a key in a TOML config file (`--config`, default
   `linewright.toml` in the working directory), with precedence flag, then

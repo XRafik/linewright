@@ -15,6 +15,7 @@ use linewright::runtime::claude::ClaudeCode;
 use linewright::status;
 use linewright::store::Store;
 use linewright::store::github::GitHub;
+use tokio::signal::unix::{Signal, SignalKind, signal};
 use tracing::{error, info};
 
 const RUNTIME: &str = "claude";
@@ -60,18 +61,31 @@ fn init_logging(format: LogFormat) {
 async fn run(command: Command, config: Config) -> Result<()> {
     match command {
         Command::Serve => {
-            let mut factory = start(&config).await?;
+            // Listening before startup, which talks to GitHub: in a container
+            // `linewright` is PID 1, which the kernel sends no signal it has
+            // no handler for.
+            let mut signals = StopSignals::new().context("listening for stop signals")?;
+            let mut factory = tokio::select! {
+                factory = start(&config) => factory?,
+                signal = signals.next() => {
+                    info!(signal = signal.name(), "stopped while starting");
+                    return Ok(());
+                }
+            };
             let stopping = factory.stopping();
             tokio::spawn({
                 let stopping = stopping.clone();
                 async move {
-                    if tokio::signal::ctrl_c().await.is_ok() {
-                        info!("stopping after the action in progress; Ctrl-C again exits at once");
-                        stopping.cancel();
-                    }
-                    if tokio::signal::ctrl_c().await.is_ok() {
-                        std::process::exit(130);
-                    }
+                    let first = signals.next().await;
+                    info!(
+                        signal = first.name(),
+                        "stopping after the action in progress; a second signal exits at once"
+                    );
+                    stopping.cancel();
+                    let second = signals.next().await;
+                    // 128 plus the signal's number, as a shell reports it
+                    // (<https://www.gnu.org/software/bash/manual/html_node/Exit-Status.html>).
+                    std::process::exit(128 + second.kind().as_raw_value());
                 }
             });
             while !stopping.is_cancelled() {
@@ -207,6 +221,53 @@ async fn start(config: &Config) -> Result<Factory> {
         factory_config,
     )
     .await
+}
+
+/// SIGINT (Ctrl-C) and SIGTERM, which `docker stop` and service managers
+/// send: both ask `serve` to stop.
+struct StopSignals {
+    interrupt: Signal,
+    terminate: Signal,
+}
+
+#[derive(Clone, Copy)]
+enum StopSignal {
+    Interrupt,
+    Terminate,
+}
+
+impl StopSignal {
+    fn name(self) -> &'static str {
+        match self {
+            StopSignal::Interrupt => "SIGINT",
+            StopSignal::Terminate => "SIGTERM",
+        }
+    }
+
+    fn kind(self) -> SignalKind {
+        match self {
+            StopSignal::Interrupt => SignalKind::interrupt(),
+            StopSignal::Terminate => SignalKind::terminate(),
+        }
+    }
+}
+
+impl StopSignals {
+    fn new() -> std::io::Result<StopSignals> {
+        Ok(StopSignals {
+            interrupt: signal(StopSignal::Interrupt.kind())?,
+            terminate: signal(StopSignal::Terminate.kind())?,
+        })
+    }
+
+    /// The next stop signal. Signals that arrive before the last one was read
+    /// count as one, so two sent back to back are a single stop.
+    async fn next(&mut self) -> StopSignal {
+        tokio::select! {
+            _ = self.interrupt.recv() => StopSignal::Interrupt,
+            _ = self.terminate.recv() => StopSignal::Terminate,
+        }
+    }
 }
 
 async fn require_tool(program: &str) -> Result<()> {
