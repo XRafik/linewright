@@ -41,3 +41,8 @@ them and gets no test of its own.
   and can never disagree with the code. Expected values must come from an
   independent source of truth: a known-good literal, a worked example, the
   spec.
+
+## Existing code
+
+Code that breaks these standards sets no precedent. Don't follow it, and don't
+cite it to justify new code that breaks them.
