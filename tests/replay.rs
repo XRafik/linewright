@@ -1,17 +1,17 @@
 //! Replay, end to end at the operator's level: a case directory in, the
 //! store's final state and every session's record out as files.
 
-mod support;
+mod common;
 
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
+use common::*;
 use linewright::case::{Case, Event, replay};
 use linewright::domain::{Login, Number, UpdateMethod};
 use linewright::reconcile::WorkKind;
 use serde_json::json;
-use support::*;
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let output = Command::new("git")

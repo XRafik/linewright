@@ -3,11 +3,11 @@
 //! GitHub, the agent runtime and the clock (`CODING_STANDARDS.md`, "Where
 //! tests go").
 
-mod support;
+mod common;
 
+use common::*;
 use linewright::reconcile::WorkKind;
 use serde_json::json;
-use support::*;
 
 #[tokio::test]
 async fn a_new_issue_is_triaged_into_a_category_a_state_and_a_brief() {
