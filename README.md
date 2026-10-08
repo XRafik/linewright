@@ -22,28 +22,3 @@ linewright --repo owner/name serve
   in `linewright.toml`; `linewright --help` lists them with their defaults.
 - The `Dockerfile` builds the base image: `linewright`, `git` and Claude Code.
   Build your own image from it with your project's toolchain added.
-
-## Tuning the briefs
-
-Each stage's agent works from a brief in [`briefs/`](briefs/). To try a change
-against a real case:
-
-```sh
-linewright capture owner/name#123 case/      # a spec change or an issue
-linewright --briefs briefs/ replay case/ --out run-1/
-```
-
-`run-1/` holds the issues and pull requests the run produced (`issues/`,
-`pulls/`, as JSON, Markdown and diffs) and every session's brief, result and
-trace (`sessions/`).
-
-## Developing
-
-```sh
-cargo test
-```
-
-Tests sit where [`CODING_STANDARDS.md`](CODING_STANDARDS.md) puts them:
-`tests/reconcile.rs` drives the decision function, and `tests/pipeline.rs`,
-`tests/replay.rs` and `tests/config.rs` drive the system as a user would,
-against a local store standing in for GitHub and a scripted agent runtime.
