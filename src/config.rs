@@ -49,7 +49,7 @@ pub struct Settings {
     /// The TOML config file [default: linewright.toml in the working directory]
     #[arg(long, global = true)]
     pub config: Option<PathBuf>,
-    /// The repository, `owner/name` [required]
+    /// The repository, `owner/name` (required)
     #[arg(long, global = true)]
     pub repo: Option<String>,
     /// How often to poll [default: 60s]

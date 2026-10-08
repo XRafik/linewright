@@ -5,7 +5,8 @@
 FROM rust:1-bookworm AS build
 WORKDIR /src
 COPY . .
-RUN cargo build --release --locked
+# Installs the toolchain rust-toolchain.toml pins.
+RUN rustup toolchain install && cargo build --release --locked
 
 FROM node:22-bookworm-slim
 RUN apt-get update \

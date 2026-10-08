@@ -24,3 +24,4 @@ the specs in step with user-visible behavior changes.
 Before working in one of these areas, read its guide:
 
 - [Commits](./docs/commits.md)
+- [Checks](./docs/checks.md)

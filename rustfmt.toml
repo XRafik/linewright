@@ -1,0 +1,3 @@
+# Set explicitly so rustfmt run outside cargo, as editors do, formats the
+# same as `cargo fmt` (https://rust-lang.github.io/rustfmt/?search=#style_edition).
+style_edition = "2024"
