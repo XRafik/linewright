@@ -267,8 +267,8 @@ stateDiagram-v2
   first.
 - Removing `ready-for-agent`, unassigning the machine user or closing the
   issue cancels its run; the branch is kept.
-- After a restart, a claimed ticket with no open PR and no live run starts a
-  fresh run.
+- After a restart, a claimed ticket with no open or merged PR and no live
+  run starts a fresh run.
 - Concurrency is a ceiling on simultaneous runs (default 4); each agent
   session has a timeout (default 30 min).
 
@@ -313,7 +313,8 @@ stateDiagram-v2
   the repository allows.
 - Commits a person pushes to the branch are kept: every run starts from the
   branch as it is.
-- A merged PR closes the issue through `Closes #N`. A PR closed without
+- A merged PR closes the issue through `Closes #N`; a reopened issue gets a
+  fresh run once `ready-for-agent` is applied again. A PR closed without
   merging sends the issue to `ready-for-human`.
 
 ## Operation

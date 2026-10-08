@@ -337,6 +337,15 @@ fn implementation(
         }
         return in_review(issue, pr, policy, plan);
     }
+    // GitHub closes the issue shortly after the merge; until then, or after a
+    // reopen, only applying the label again asks for more work.
+    let relabeled_since = |at| last_labeled(issue, label::READY_FOR_AGENT).is_some_and(|l| l > at);
+    if pulls
+        .clone()
+        .any(|p| matches!(p.state, PullState::Merged { at } if !relabeled_since(at)))
+    {
+        return;
+    }
     if claimed {
         let closed = pulls
             .find(|p| matches!(p.state, PullState::Closed { at } if !linewright_commented_since(issue, at, policy)));

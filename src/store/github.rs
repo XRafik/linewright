@@ -988,9 +988,9 @@ impl Store for GitHub {
                 pulls.push(self.pull_view(pr).await?);
             }
         }
-        // The machine user's closed pull requests for the issues in view,
-        // however long ago they were closed: a refused pull request is not
-        // redone.
+        // The machine user's closed and merged pull requests for the issues in
+        // view, however long ago: a refused pull request is not redone, and a
+        // merged one is not redone while GitHub closes its issue.
         let closed: std::collections::BTreeSet<u64> = issues
             .values()
             .flat_map(|i| {
@@ -998,7 +998,7 @@ impl Store for GitHub {
                     .iter()
                     .flat_map(|n| &n.nodes)
             })
-            .filter(|p| p.state == "CLOSED" && by_machine(&p.author))
+            .filter(|p| matches!(p.state.as_str(), "CLOSED" | "MERGED") && by_machine(&p.author))
             .map(|p| p.number)
             .collect();
         for number in closed {

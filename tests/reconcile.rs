@@ -645,6 +645,28 @@ fn a_pull_request_closed_without_merging_hands_the_ticket_back_once() {
     assert_eq!(at(&handed_back, 10), vec![implement(2)]);
 }
 
+#[test]
+fn a_ticket_whose_pull_request_merged_waits_for_github_to_close_it_until_labeled_again() {
+    let mut pr = pull(20, 2);
+    pr.state = PullState::Merged { at: t(5) };
+    let merged = in_review(pr);
+    let mut unclaimed = merged.clone();
+    unclaimed.issues[0].assignees.clear();
+    let mut labeled_as_it_merged = merged.clone();
+    labeled_as_it_merged.issues[0] = labeled_at(
+        labeled_as_it_merged.issues[0].clone(),
+        label::READY_FOR_AGENT,
+        5,
+    );
+    let mut relabeled = merged.clone();
+    relabeled.issues[0] = labeled_at(relabeled.issues[0].clone(), label::READY_FOR_AGENT, 7);
+
+    assert_eq!(at(&merged, 10), vec![]);
+    assert_eq!(at(&unclaimed, 10), vec![]);
+    assert_eq!(at(&labeled_as_it_merged, 10), vec![]);
+    assert_eq!(at(&relabeled, 10), vec![implement(2)]);
+}
+
 fn tracking(number: u64, pr: u64, tickets: &[(u64, bool)]) -> Issue {
     let mut tracking = issue(number);
     tracking.author = Login::new(MACHINE);
