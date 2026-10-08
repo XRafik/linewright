@@ -169,17 +169,23 @@ pub fn pull_work(
         }
         PullTask::Update => {}
     }
+    let _ = writeln!(
+        task,
+        "### The pull request's description\n\n{}\n",
+        or_none(&pr.body)
+    );
     write_issue(&mut task, "The ticket", ticket.issue);
     write_filed_gaps(&mut task, &ticket.filed_gaps);
     let contract = r#"One of:
 
-{ "outcome": "done", "comment": "<Markdown summary of what you changed, for the pull request>", "replies": [REPLY], "spec_gaps": [SPEC_GAP] }
+{ "outcome": "done", "comment": "<Markdown summary of what you changed, for the pull request>", "pr_body": "<only when your change made the description out of date: the whole body rewritten, per the PR reference>", "replies": [REPLY], "spec_gaps": [SPEC_GAP] }
 { "outcome": "blocked", "question": "<the question the maintainer must answer>", "spec_gaps": [SPEC_GAP] }
 { "outcome": "gave-up", "reason": "<why the work cannot be done>" }
 
 where REPLY is { "thread": "<thread id>", "body": "<your reply in that thread>", "resolve": <true to resolve it> }
 and SPEC_GAP is { "title": "<issue title>", "body": "<the spec change needed, in Markdown>" }.
-Reply in every thread with new feedback. Resolve only threads a bot opened: people resolve their own."#;
+Reply in every thread with new feedback. Resolve only threads a bot opened: people resolve their own.
+Leave `pr_body` out when the description still fits."#;
     compose(
         &briefs.implement,
         &implement_references(briefs),
@@ -329,7 +335,6 @@ fn write_feedback(task: &mut String, pr: &Pull, feedback: &Feedback) {
         }
     }
     task.push_str("### The pull request's conversation so far\n\n");
-    let _ = writeln!(task, "#### Body\n\n{}\n", or_none(&pr.body));
     for comment in &pr.comments {
         write_comment(task, comment);
     }

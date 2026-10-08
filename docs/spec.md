@@ -314,6 +314,8 @@ stateDiagram-v2
   the repository allows.
 - Commits a person pushes to the branch are kept: every run starts from the
   branch as it is.
+- A run that changes a PR so its description no longer fits rewrites the
+  description.
 - A merged PR closes the issue through `Closes #N`; a reopened issue gets a
   fresh run once `ready-for-agent` is applied again. A PR closed without
   merging sends the issue to `ready-for-human`.

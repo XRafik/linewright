@@ -926,6 +926,7 @@ async fn pull_work(
     match result {
         PullWorkResult::Done {
             comment,
+            pr_body,
             replies,
             spec_gaps,
         } => {
@@ -934,6 +935,12 @@ async fn pull_work(
                     .push(&ws.dir, &pr.head_ref, lease)
                     .await
                     .map_err(infra)?;
+            }
+            if let Some(body) = pr_body {
+                store
+                    .edit_body(pr.number, &closing(&body, ticket.issue.number))
+                    .await
+                    .map_err(Failure::Apply)?;
             }
             record_pull_work(
                 shell,

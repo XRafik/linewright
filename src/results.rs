@@ -118,6 +118,10 @@ pub struct ThreadReply {
 pub enum PullWorkResult {
     Done {
         comment: String,
+        /// The pull request's body rewritten, when the change made it out of
+        /// date.
+        #[serde(default)]
+        pr_body: Option<String>,
         #[serde(default)]
         replies: Vec<ThreadReply>,
         #[serde(default)]

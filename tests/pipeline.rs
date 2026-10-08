@@ -244,6 +244,34 @@ async fn review_comments_are_addressed_answered_in_their_threads_and_review_is_r
 }
 
 #[tokio::test]
+async fn a_rework_that_makes_the_description_out_of_date_rewrites_it() {
+    let mut world = World::new().await;
+    let (ticket, pr) = world.ticket_in_review().await;
+    world
+        .store
+        .comment_as("maintainer", pr, "Rename it.")
+        .unwrap();
+    world.runtime.on(WorkKind::Rework, |call| {
+        assert!(call.spec.prompt.contains("Does it."));
+        commit_in(
+            &call.spec.dir,
+            &[("src/renamed.txt", "renamed\n")],
+            "Rename",
+        );
+        json(json!({
+            "outcome": "done",
+            "comment": "Renamed as asked.",
+            "pr_body": "Does it, renamed."
+        }))
+    });
+
+    world.poll().await;
+
+    let view = world.store.snapshot_pull(pr).await;
+    assert_eq!(view.body, format!("Does it, renamed.\n\nCloses {ticket}"));
+}
+
+#[tokio::test]
 async fn feedback_posted_while_the_session_works_is_addressed_before_the_push() {
     let mut world = World::new().await;
     let (_, pr) = world.ticket_in_review().await;
