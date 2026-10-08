@@ -15,6 +15,8 @@ This project uses specification-driven development.
 How the code does what the specs say belongs in the code and its comments. Keep
 the specs in step with user-visible behavior changes.
 
+Changes to specs require human approval.
+
 ## Coding standards
 
 `CODING_STANDARDS.md` should always be read before any code review.
