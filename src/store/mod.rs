@@ -5,6 +5,7 @@
 
 pub mod github;
 pub mod local;
+pub mod rate_limit;
 
 use std::path::Path;
 

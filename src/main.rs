@@ -61,19 +61,31 @@ async fn run(command: Command, config: Config) -> Result<()> {
     match command {
         Command::Serve => {
             let mut factory = start(&config).await?;
-            loop {
+            let stopping = factory.stopping();
+            tokio::spawn({
+                let stopping = stopping.clone();
+                async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        info!("stopping after the action in progress; Ctrl-C again exits at once");
+                        stopping.cancel();
+                    }
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        std::process::exit(130);
+                    }
+                }
+            });
+            while !stopping.is_cancelled() {
                 if let Err(e) = factory.cycle().await {
                     error!(error = format!("{e:#}"), "poll failed");
                 }
                 tokio::select! {
                     _ = tokio::time::sleep(config.poll_interval) => {}
-                    _ = tokio::signal::ctrl_c() => {
-                        info!("stopping: cancelling the runs in flight");
-                        factory.stop().await;
-                        return Ok(());
-                    }
+                    () = stopping.cancelled() => {}
                 }
             }
+            info!("stopping: cancelling the runs in flight");
+            factory.stop().await;
+            Ok(())
         }
         Command::Once => {
             let mut factory = start(&config).await?;

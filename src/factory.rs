@@ -50,6 +50,7 @@ pub struct Factory {
     shell: Arc<Shell>,
     runs: JoinSet<()>,
     live: HashMap<Id, LiveEntry>,
+    stopping: CancellationToken,
 }
 
 impl Factory {
@@ -103,11 +104,18 @@ impl Factory {
             shell: Arc::new(shell),
             runs: JoinSet::new(),
             live: HashMap::new(),
+            stopping: CancellationToken::new(),
         })
     }
 
     /// One poll: reconcile a fresh snapshot with the runs in flight and act
     /// on the decisions. Returns the decisions.
+    /// Cancelled to stop: a poll then takes no more actions, though the one
+    /// in progress finishes, so no action is left half done.
+    pub fn stopping(&self) -> CancellationToken {
+        self.stopping.clone()
+    }
+
     pub async fn cycle(&mut self) -> Result<Vec<Action>> {
         // Reap first: a run that ends during the snapshot stays live for this
         // poll, so the snapshot cannot miss what it wrote.
@@ -131,6 +139,9 @@ impl Factory {
             .collect();
         let actions = reconcile(&snapshot, &live, now, &shell.policy);
         for action in &actions {
+            if self.stopping.is_cancelled() {
+                break;
+            }
             if let Err(e) = self.execute(action, &snapshot, now).await {
                 error!(action = ?action, error = format!("{e:#}"), "action failed");
             }

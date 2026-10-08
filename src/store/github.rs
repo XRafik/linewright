@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::time::SystemTime;
 
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
@@ -14,6 +15,7 @@ use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
+use super::rate_limit;
 use super::{Categories, CloseReason, Identity, NewIssue, NewPull, PushMode, RepoSettings, Store};
 use crate::domain::{
     Check, CheckFailure, CheckState, Comment, Issue, IssueEvent, Linked, Login, Mergeability,
@@ -119,12 +121,24 @@ impl GitHub {
         path: &str,
         body: Option<Value>,
     ) -> Result<T> {
-        let response = self.send(method.clone(), path, body).await?;
-        let status = response.status();
-        let text = response.text().await?;
-        if !status.is_success() {
-            bail!("{method} {path}: {status}: {text}");
-        }
+        let mut retries = 0;
+        let text = loop {
+            let response = self.send(method.clone(), path, body.clone()).await?;
+            let status = response.status();
+            let headers = response.headers().clone();
+            let text = response.text().await?;
+            let wait = rate_limit::wait(status, &headers, &text, retries, SystemTime::now());
+            if let Some(wait) = wait.filter(|_| retries < rate_limit::RETRIES) {
+                tracing::warn!(%method, path, wait = %humantime::format_duration(wait), "rate limited");
+                tokio::time::sleep(wait).await;
+                retries += 1;
+                continue;
+            }
+            if !status.is_success() || wait.is_some() {
+                bail!("{method} {path}: {status}: {text}");
+            }
+            break text;
+        };
         let text = if text.is_empty() { "null" } else { &text };
         serde_json::from_str(text).with_context(|| format!("decoding {method} {path}"))
     }
