@@ -186,10 +186,13 @@ impl GitHub {
     }
 
     async fn issues(&self, filter: Value) -> Result<Vec<GqlIssue>> {
+        // Twenty issues with the seven connections each has cost 141
+        // requests, which rounds to 1 point; fifty cost 4
+        // (<https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api#calculating-a-rate-limit-score-before-running-the-call>).
         let query = format!(
             "query($owner: String!, $name: String!, $filter: IssueFilters, $cursor: String) {{
               repository(owner: $owner, name: $name) {{
-                issues(first: 50, after: $cursor, filterBy: $filter) {{
+                issues(first: 20, after: $cursor, filterBy: $filter) {{
                   pageInfo {{ hasNextPage endCursor }}
                   nodes {{ ...IssueFields }}
                 }}
@@ -215,25 +218,24 @@ impl GitHub {
         }
     }
 
-    /// The repository's open pull requests.
-    async fn pulls(&self) -> Result<Vec<GqlPull>> {
-        let query = format!(
-            "query($owner: String!, $name: String!, $cursor: String) {{
-              repository(owner: $owner, name: $name) {{
-                pullRequests(first: 25, after: $cursor, states: [OPEN]) {{
-                  pageInfo {{ hasNextPage endCursor }}
-                  nodes {{ ...PullFields }}
-                }}
-              }}
-            }}
-            {PULL_FIELDS}"
-        );
+    /// The repository's open pull requests, by number and author only: the
+    /// full fields cost points per pull request, so only the machine user's
+    /// are read in full.
+    async fn open_pulls(&self) -> Result<Vec<GqlOpenPull>> {
+        let query = "query($owner: String!, $name: String!, $cursor: String) {
+              repository(owner: $owner, name: $name) {
+                pullRequests(first: 100, after: $cursor, states: [OPEN]) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes { number author { __typename login } }
+                }
+              }
+            }";
         let mut pulls = vec![];
         let mut cursor = Value::Null;
         loop {
-            let data: RepoData<PullsData<GqlPull>> = self
+            let data: RepoData<PullsData<GqlOpenPull>> = self
                 .graphql(
-                    &query,
+                    query,
                     json!({"owner": self.owner, "name": self.name, "cursor": cursor}),
                 )
                 .await?;
@@ -466,6 +468,12 @@ struct IssuesData {
 #[serde(rename_all = "camelCase")]
 struct PullsData<T> {
     pull_requests: Page<T>,
+}
+
+#[derive(Deserialize)]
+struct GqlOpenPull {
+    number: u64,
+    author: Option<Actor>,
 }
 
 #[derive(Deserialize)]
@@ -983,9 +991,9 @@ impl Store for GitHub {
                 .is_some_and(|a| &a.login == machine && a.typename != "Bot")
         };
         let mut pulls = vec![];
-        for pr in self.pulls().await? {
+        for pr in self.open_pulls().await? {
             if by_machine(&pr.author) {
-                pulls.push(self.pull_view(pr).await?);
+                pulls.push(self.pull(Number(pr.number)).await?);
             }
         }
         // The machine user's closed and merged pull requests for the issues in
