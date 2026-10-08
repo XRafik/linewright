@@ -272,6 +272,43 @@ async fn a_rework_that_makes_the_description_out_of_date_rewrites_it() {
 }
 
 #[tokio::test]
+async fn a_run_whose_pull_request_closes_while_it_works_pushes_and_records_nothing() {
+    let mut world = World::new().await;
+    let (_, pr) = world.ticket_in_review().await;
+    world
+        .store
+        .comment_as("maintainer", pr, "Rename it.")
+        .unwrap();
+    let store = world.store.clone();
+    world.runtime.on(WorkKind::Rework, move |call| {
+        commit_in(
+            &call.spec.dir,
+            &[("src/renamed.txt", "renamed\n")],
+            "Rename",
+        );
+        store.close_pull_as(pr).unwrap();
+        json(json!({"outcome": "done", "comment": "Renamed as asked."}))
+    });
+
+    world.poll().await;
+
+    let view = world.store.snapshot_pull(pr).await;
+    assert!(
+        world
+            .store
+            .file(&view.head_ref, "src/renamed.txt")
+            .await
+            .is_err()
+    );
+    assert!(
+        !view
+            .comments
+            .iter()
+            .any(|c| c.body.starts_with("> *Linewright, rework*"))
+    );
+}
+
+#[tokio::test]
 async fn feedback_posted_while_the_session_works_is_addressed_before_the_push() {
     let mut world = World::new().await;
     let (_, pr) = world.ticket_in_review().await;

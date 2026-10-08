@@ -267,7 +267,8 @@ stateDiagram-v2
   reason and the tail of the log. Infrastructure failures are retried once
   first.
 - Removing `ready-for-agent`, unassigning the machine user or closing the
-  issue cancels its run; the branch is kept.
+  issue cancels its run; the branch is kept. A run on a PR that is merged or
+  closed while it works pushes and posts nothing.
 - After a restart, a claimed ticket with no open or merged PR and no live
   run starts a fresh run.
 - Concurrency is a ceiling on simultaneous runs (default 4); each agent

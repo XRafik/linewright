@@ -900,14 +900,14 @@ async fn pull_work(
     // Feedback posted after the snapshot the brief came from would be older
     // than the push that follows, so it goes to the session before anything
     // is pushed, for as long as it keeps coming within the session's time.
-    let mut pr_now = pr.clone();
+    let mut pr_now;
     let mut shown_until = ctx.as_of;
     loop {
-        if !matches!(result, PullWorkResult::Done { .. }) {
-            break;
-        }
         let read_at = shell.clock.now();
         pr_now = store.pull(pr.number).await.map_err(infra)?;
+        if !pr_now.is_open() || !matches!(result, PullWorkResult::Done { .. }) {
+            break;
+        }
         let arrived = late(&new_feedback(&pr_now, machine), shown_until);
         if arrived.is_empty() {
             break;
@@ -921,6 +921,16 @@ async fn pull_work(
             accept(m, threads.clone())
         })
         .await?;
+    }
+    // Merged or closed while the session worked: its work is for a pull
+    // request that is done, and what happens to the ticket is the next
+    // poll's to decide.
+    if !pr_now.is_open() {
+        info!(
+            pr = pr.number.0,
+            "the pull request closed while the run worked; nothing pushed"
+        );
+        return Ok(());
     }
     spec_contract(shell, &ws.dir, stage).await?;
     match result {
