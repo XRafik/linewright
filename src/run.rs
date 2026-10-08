@@ -176,7 +176,7 @@ async fn attempt(
     let ticket = |n: Number| -> Result<Ticket, Failure> {
         Ok(Ticket {
             issue: issue(n)?,
-            filed_gaps: spec_gap::filed_for(snapshot, n, &shell.policy.machine_user),
+            filed_gaps: spec_gap::filed_for(snapshot, n),
         })
     };
     match work {

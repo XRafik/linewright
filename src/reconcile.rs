@@ -5,12 +5,11 @@
 use chrono::TimeDelta;
 
 use crate::domain::{
-    CheckState, Comment, Issue, IssueEvent, Login, Mergeability, MergedPull, Number, Pull,
+    CheckState, Comment, Filed, Issue, IssueEvent, Login, Mergeability, MergedPull, Number, Pull,
     PullState, Review, ReviewState, Snapshot, Thread, Timestamp, label,
 };
 use crate::marker::{Stage, stage_of};
 use crate::spec_glob::SpecGlob;
-use crate::tracking;
 
 /// The settings the decisions depend on.
 #[derive(Clone, Debug)]
@@ -172,7 +171,11 @@ pub fn reconcile(
         // The pull request is labeled processed last, so a tracking issue
         // without the label is a decomposition that stopped part way.
         let partial = snapshot.issues.iter().find(|i| {
-            i.open && tracking::spec_change_of(i, &policy.machine_user) == Some(pr.number)
+            i.open
+                && i.filed
+                    == Some(Filed::Tracking {
+                        spec_change: pr.number,
+                    })
         });
         match partial {
             Some(partial) => plan.act(Action::DiscardTickets {
@@ -190,7 +193,7 @@ pub fn reconcile(
 
     for issue in snapshot.issues.iter().filter(|i| i.open) {
         let subject = Subject::Issue(issue.number);
-        let is_tracking = tracking::spec_change_of(issue, &policy.machine_user).is_some();
+        let is_tracking = matches!(issue.filed, Some(Filed::Tracking { .. }));
         if is_tracking && !issue.sub_issues.is_empty() && issue.sub_issues.iter().all(|t| !t.open) {
             plan.act(Action::CloseTracking {
                 issue: issue.number,

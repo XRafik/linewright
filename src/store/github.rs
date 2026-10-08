@@ -18,9 +18,9 @@ use serde_json::{Value, json};
 use super::rate_limit;
 use super::{Categories, CloseReason, Identity, NewIssue, NewPull, PushMode, RepoSettings, Store};
 use crate::domain::{
-    Check, CheckFailure, CheckState, Comment, Issue, IssueEvent, Linked, Login, Mergeability,
-    MergedPull, Number, Pull, PullState, Push, Review, ReviewState, Snapshot, Thread, Timestamp,
-    UpdateMethod, label,
+    Check, CheckFailure, CheckState, Comment, Filed, Issue, IssueEvent, Linked, Login,
+    Mergeability, MergedPull, Number, Pull, PullState, Push, Review, ReviewState, Snapshot, Thread,
+    Timestamp, UpdateMethod, label,
 };
 use crate::git;
 
@@ -612,8 +612,11 @@ enum GqlEvent {
     },
 }
 
-impl From<GqlIssue> for Issue {
-    fn from(i: GqlIssue) -> Issue {
+impl GqlIssue {
+    fn into_issue(self, machine_user: &Login) -> Issue {
+        let i = self;
+        let author = login(i.author);
+        let filed = Filed::read(&author, &i.title, &i.body, machine_user);
         let events = i
             .timeline_items
             .nodes
@@ -641,7 +644,7 @@ impl From<GqlIssue> for Issue {
             number: Number(i.number),
             title: i.title,
             body: i.body,
-            author: login(i.author),
+            author,
             open: i.state == "OPEN",
             created_at: i.created_at,
             labels: i.labels.nodes.into_iter().map(|l| l.name).collect(),
@@ -655,6 +658,7 @@ impl From<GqlIssue> for Issue {
             blocked_by: linked(i.blocked_by),
             sub_issues: linked(i.sub_issues),
             events,
+            filed,
         }
     }
 }
@@ -1029,7 +1033,10 @@ impl Store for GitHub {
         Ok(Snapshot {
             merged: self.merged_since(&default_branch, merged_since).await?,
             default_branch,
-            issues: issues.into_values().map(Issue::from).collect(),
+            issues: issues
+                .into_values()
+                .map(|i| i.into_issue(&self.machine_user()))
+                .collect(),
             pulls,
         })
     }

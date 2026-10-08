@@ -1,9 +1,8 @@
 //! `linewright status`: the work in flight, derived from a snapshot the way
 //! the reconcile step derives it.
 
-use crate::domain::{CheckState, PullState, Snapshot, Timestamp, label};
+use crate::domain::{CheckState, Filed, PullState, Snapshot, Timestamp, label};
 use crate::reconcile::{Policy, pending_spec_changes};
-use crate::tracking;
 
 pub fn report(snapshot: &Snapshot, now: Timestamp, policy: &Policy) -> Vec<String> {
     let machine = &policy.machine_user;
@@ -15,7 +14,7 @@ pub fn report(snapshot: &Snapshot, now: Timestamp, policy: &Policy) -> Vec<Strin
         ));
     }
     for issue in snapshot.issues.iter().filter(|i| i.open) {
-        let state = if tracking::spec_change_of(issue, machine).is_some() {
+        let state = if matches!(issue.filed, Some(Filed::Tracking { .. })) {
             let closed = issue.sub_issues.iter().filter(|t| !t.open).count();
             format!(
                 "tracking issue, {closed}/{} tickets closed",

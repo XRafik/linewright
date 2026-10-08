@@ -16,9 +16,9 @@ use serde::Serialize;
 use super::{Categories, CloseReason, Identity, NewIssue, NewPull, PushMode, RepoSettings, Store};
 use crate::clock::Clock;
 use crate::domain::{
-    Check, CheckFailure, CheckState, Comment, Issue, IssueEvent, Linked, Login, Mergeability,
-    MergedPull, Number, Pull, PullState, Push, Review, ReviewState, Snapshot, Thread, Timestamp,
-    UpdateMethod, closing_references,
+    Check, CheckFailure, CheckState, Comment, Filed, Issue, IssueEvent, Linked, Login,
+    Mergeability, MergedPull, Number, Pull, PullState, Push, Review, ReviewState, Snapshot, Thread,
+    Timestamp, UpdateMethod, closing_references,
 };
 use crate::git;
 
@@ -209,6 +209,7 @@ impl LocalStore {
                     comments: vec![],
                     blocked_by: vec![],
                     sub_issues: vec![],
+                    filed: None,
                     events: labels
                         .iter()
                         .map(|l| IssueEvent::Labeled {
@@ -694,10 +695,12 @@ impl State {
     }
 
     fn issue_view(&self, record: &IssueRecord) -> Issue {
+        let issue = &record.issue;
         Issue {
             blocked_by: self.linked(&record.blocked_by),
             sub_issues: self.linked(&record.sub_issues),
-            ..record.issue.clone()
+            filed: Filed::read(&issue.author, &issue.title, &issue.body, &self.machine_user),
+            ..issue.clone()
         }
     }
 

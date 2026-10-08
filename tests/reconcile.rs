@@ -42,6 +42,7 @@ fn issue(number: u64) -> Issue {
         blocked_by: vec![],
         sub_issues: vec![],
         events: vec![],
+        filed: None,
     }
 }
 
@@ -171,15 +172,7 @@ fn only_unprocessed_spec_changes_by_people_within_the_lookback_are_picked_up() {
 
 #[test]
 fn an_interrupted_decomposition_is_discarded_so_the_spec_change_is_cut_again() {
-    let mut partial = issue(9);
-    partial.author = Login::new(MACHINE);
-    partial.title = "Spec change: Spec PR 5".into();
-    partial.body = "Tickets for the spec change in #5.".into();
-    partial.sub_issues = vec![Linked {
-        number: Number(10),
-        open: true,
-    }];
-    let mut world = snapshot(vec![partial]);
+    let mut world = snapshot(vec![tracking(9, 5, &[(10, true)])]);
     world.merged = vec![merged(5, &["docs/spec.md"])];
     let cutting = [LiveRun {
         subject: Subject::SpecChange(Number(5)),
@@ -671,7 +664,9 @@ fn tracking(number: u64, pr: u64, tickets: &[(u64, bool)]) -> Issue {
     let mut tracking = issue(number);
     tracking.author = Login::new(MACHINE);
     tracking.title = format!("Spec change: Spec PR {pr}");
-    tracking.body = format!("Tickets for the spec change in #{pr}.");
+    tracking.filed = Some(Filed::Tracking {
+        spec_change: Number(pr),
+    });
     tracking.sub_issues = tickets
         .iter()
         .map(|&(n, open)| Linked {

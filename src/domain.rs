@@ -125,6 +125,32 @@ pub struct Issue {
     pub blocked_by: Vec<Linked>,
     pub sub_issues: Vec<Linked>,
     pub events: Vec<IssueEvent>,
+    /// What the issue is for, if Linewright filed it.
+    #[serde(default)]
+    pub filed: Option<Filed>,
+}
+
+/// What an issue Linewright filed is for. A store reads it from the issue's
+/// title and body once, when it builds the snapshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum Filed {
+    /// The tracking issue of a spec change.
+    Tracking { spec_change: Number },
+    /// A spec gap found while working on a ticket, which did not block it.
+    SpecGap { ticket: Number },
+}
+
+impl Filed {
+    pub fn read(author: &Login, title: &str, body: &str, machine_user: &Login) -> Option<Filed> {
+        if author != machine_user {
+            return None;
+        }
+        if let Some(spec_change) = crate::tracking::spec_change_of(title, body) {
+            return Some(Filed::Tracking { spec_change });
+        }
+        crate::spec_gap::ticket_of(body).map(|ticket| Filed::SpecGap { ticket })
+    }
 }
 
 impl Issue {
