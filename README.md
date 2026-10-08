@@ -3,15 +3,6 @@
 Linewright is a spec-driven software factory: you write the specification, and
 coding agents turn it into working software.
 
-It is a server that polls a GitHub repository. A merged pull request that
-changes the spec (`docs/**/*.md` by default) is cut into tickets; an issue
-labeled `needs-triage` is triaged; an issue labeled `ready-for-agent` is
-implemented, reviewed by agents, and delivered as a pull request that is green
-and ready for your review. You merge it, or comment and the factory reworks it.
-What it does and why is in [`docs/specs/product.md`](docs/specs/product.md);
-the decisions behind the code are in
-[`docs/specs/architecture.md`](docs/specs/architecture.md).
-
 ## Running it
 
 You need `git` and [Claude Code](https://code.claude.com) (`claude`) on the
