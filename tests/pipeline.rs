@@ -441,6 +441,39 @@ async fn a_blocking_spec_gap_hands_the_ticket_back_keeping_the_branch_and_a_non_
 }
 
 #[tokio::test]
+async fn a_spec_gap_already_filed_for_a_ticket_is_shown_to_later_sessions_and_not_filed_again() {
+    let mut world = World::new().await;
+    world.runtime.on(WorkKind::Implement, |_| {
+        json(json!({
+            "outcome": "blocked",
+            "question": "Should gadgets expire?",
+            "spec_gaps": [{"title": "Spec: gadget colors", "body": "The spec doesn't say."}]
+        }))
+    });
+    let ticket = world
+        .store
+        .open_issue("maintainer", "Gadgets", "", &["ready-for-agent"]);
+    world.poll().await;
+    world.store.unlabel_as(ticket, "ready-for-human").unwrap();
+    world.store.label_as(ticket, "ready-for-agent").unwrap();
+
+    world.poll().await;
+
+    let prompts = world.runtime.prompts(WorkKind::Implement);
+    assert_eq!(prompts.len(), 2);
+    assert!(!prompts[0].contains("Spec gaps already filed"));
+    assert!(prompts[1].contains("Spec gaps already filed"));
+    assert!(prompts[1].contains("Spec: gadget colors"));
+    let gaps = world
+        .store
+        .issues()
+        .into_iter()
+        .filter(|i| i.title == "Spec: gadget colors")
+        .count();
+    assert_eq!(gaps, 1);
+}
+
+#[tokio::test]
 async fn a_pull_request_closed_without_merging_hands_its_ticket_back() {
     let mut world = World::new().await;
     let (ticket, pr) = world.ticket_in_review().await;

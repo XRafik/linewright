@@ -258,7 +258,8 @@ stateDiagram-v2
 - A spec gap that blocks the ticket (the spec cannot decide it) sends the
   ticket to `ready-for-human` with the question; the branch is kept. A gap
   that does not block it becomes a separate `ready-for-human` issue
-  describing the needed spec change, and the ticket continues.
+  describing the needed spec change, and the ticket continues. A gap already
+  filed for the ticket and still open is not filed again.
 - A session's result the manager cannot parse goes back to the session with
   the parse error, so it can answer again (default once).
 - Any unexpected end (crash, timeout, the agent giving up, a result that

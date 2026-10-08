@@ -31,7 +31,8 @@ fails, whatever else it does. When the spec cannot decide something:
   and the question the maintainer must answer. Commit what you have first.
 - If it doesn't block the ticket, choose the reading the spec and the code
   support best, carry on, and list the gap in `spec_gaps`: each becomes an
-  issue for the maintainer describing the spec change needed.
+  issue for the maintainer describing the spec change needed. Skip gaps the
+  task lists as already filed.
 
 ## When you cannot finish
 

@@ -18,12 +18,13 @@ use crate::domain::{
 };
 use crate::git::{self, Updated};
 use crate::marker::{Stage, marked};
-use crate::prompts::{self, Conflict, PullTask, Repo};
+use crate::prompts::{self, Conflict, PullTask, Repo, Ticket};
 use crate::reconcile::{Feedback, Policy, Subject, Work, WorkKind, new_feedback};
 use crate::results::{
     self, ImplementResult, PullWorkResult, SpecGap, Tickets, TriageOutcome, TriageResult,
 };
 use crate::runtime::{Runtime, SessionError, SessionSpec, Turn};
+use crate::spec_gap;
 use crate::store::{Categories, Identity, NewIssue, NewPull, PushMode, RepoSettings, Store};
 use crate::tracking;
 
@@ -172,6 +173,12 @@ async fn attempt(
             .with_context(|| format!("{n} is not in the snapshot"))
             .map_err(infra)
     };
+    let ticket = |n: Number| -> Result<Ticket, Failure> {
+        Ok(Ticket {
+            issue: issue(n)?,
+            filed_gaps: spec_gap::filed_for(snapshot, n, &shell.policy.machine_user),
+        })
+    };
     match work {
         Work::Triage { issue: n } => triage(shell, ctx, issue(*n)?).await,
         Work::Tickets { pr } => {
@@ -181,17 +188,17 @@ async fn attempt(
                 .map_err(infra)?;
             tickets(shell, ctx, pr).await
         }
-        Work::Implement { issue: n } => implement(shell, ctx, issue(*n)?).await,
+        Work::Implement { issue: n } => implement(shell, ctx, &ticket(*n)?).await,
         Work::Rework { issue: n, pr } => {
-            pull_work(shell, ctx, issue(*n)?, pull(*pr)?, Task::Rework).await
+            pull_work(shell, ctx, &ticket(*n)?, pull(*pr)?, Task::Rework).await
         }
         Work::FixCi {
             issue: n,
             pr,
             failing,
-        } => pull_work(shell, ctx, issue(*n)?, pull(*pr)?, Task::FixCi(failing)).await,
+        } => pull_work(shell, ctx, &ticket(*n)?, pull(*pr)?, Task::FixCi(failing)).await,
         Work::Update { issue: n, pr } => {
-            pull_work(shell, ctx, issue(*n)?, pull(*pr)?, Task::Update).await
+            pull_work(shell, ctx, &ticket(*n)?, pull(*pr)?, Task::Update).await
         }
     }
 }
@@ -609,10 +616,10 @@ fn branch_name(issue: &Issue) -> String {
     }
 }
 
-async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Issue) -> Result<(), Failure> {
-    let subject = Subject::Issue(ticket.number);
+async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Ticket<'_>) -> Result<(), Failure> {
+    let subject = Subject::Issue(ticket.issue.number);
     let ws = Workspace::clone(shell, subject, &shell.settings.default_branch).await?;
-    let branch = branch_name(ticket);
+    let branch = branch_name(ticket.issue);
     git::create_branch(&ws.dir, &branch).await.map_err(infra)?;
     let upstream = shell.upstream();
     let prompt = prompts::implement(&shell.briefs, &shell.repo(), ticket, &branch);
@@ -675,17 +682,17 @@ async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Issue) -> Result<(), Failu
             let pr = store
                 .open_pull(NewPull {
                     head: branch.clone(),
-                    title: ticket.title.clone(),
-                    body: closing(&pr_body, ticket.number),
+                    title: ticket.issue.title.clone(),
+                    body: closing(&pr_body, ticket.issue.number),
                 })
                 .await
                 .map_err(Failure::Apply)?;
             info!(
-                issue = ticket.number.0,
+                issue = ticket.issue.number.0,
                 pr = pr.0,
                 "opened draft pull request"
             );
-            file_spec_gaps(shell, &spec_gaps, ticket.number)
+            file_spec_gaps(shell, &spec_gaps, ticket)
                 .await
                 .map_err(Failure::Apply)
         }
@@ -693,7 +700,7 @@ async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Issue) -> Result<(), Failu
             question,
             spec_gaps,
         } => {
-            file_spec_gaps(shell, &spec_gaps, ticket.number)
+            file_spec_gaps(shell, &spec_gaps, ticket)
                 .await
                 .map_err(Failure::Apply)?;
             let kept = keep_branch().await?;
@@ -755,17 +762,36 @@ async fn spec_contract(shell: &Shell, dir: &Path, stage: Stage) -> Result<(), Fa
     })
 }
 
-async fn file_spec_gaps(shell: &Shell, gaps: &[SpecGap], ticket: Number) -> Result<()> {
+/// Files the gaps not already filed for the ticket. A session told which are
+/// may still return one, so its title is compared too.
+async fn file_spec_gaps(shell: &Shell, gaps: &[SpecGap], ticket: &Ticket<'_>) -> Result<()> {
+    let same = |a: &str, b: &str| a.trim().eq_ignore_ascii_case(b.trim());
     for gap in gaps {
+        if let Some(filed) = ticket
+            .filed_gaps
+            .iter()
+            .find(|f| same(&f.title, &gap.title))
+        {
+            info!(
+                issue = filed.number.0,
+                ticket = ticket.issue.number.0,
+                "spec gap already filed"
+            );
+            continue;
+        }
         let number = shell
             .store
             .create_issue(NewIssue {
                 title: gap.title.clone(),
-                body: format!("{}\n\nFound while working on {ticket}.", gap.body.trim()),
+                body: spec_gap::body(&gap.body, ticket.issue.number),
                 labels: vec![label::READY_FOR_HUMAN.into()],
             })
             .await?;
-        info!(issue = number.0, ticket = ticket.0, "filed a spec gap");
+        info!(
+            issue = number.0,
+            ticket = ticket.issue.number.0,
+            "filed a spec gap"
+        );
     }
     Ok(())
 }
@@ -781,11 +807,11 @@ enum Task<'a> {
 async fn pull_work(
     shell: &Shell,
     ctx: &Ctx,
-    ticket: &Issue,
+    ticket: &Ticket<'_>,
     pr: &Pull,
     task: Task<'_>,
 ) -> Result<(), Failure> {
-    let subject = Subject::Issue(ticket.number);
+    let subject = Subject::Issue(ticket.issue.number);
     let kind = match task {
         Task::Rework => WorkKind::Rework,
         Task::FixCi(_) => WorkKind::FixCi,
@@ -907,7 +933,7 @@ async fn pull_work(
             }
             record_pull_work(
                 shell,
-                ticket,
+                ticket.issue,
                 &pr_now,
                 stage,
                 &comment,
@@ -916,7 +942,7 @@ async fn pull_work(
             )
             .await
             .map_err(Failure::Apply)?;
-            file_spec_gaps(shell, &spec_gaps, ticket.number)
+            file_spec_gaps(shell, &spec_gaps, ticket)
                 .await
                 .map_err(Failure::Apply)
         }
@@ -924,7 +950,7 @@ async fn pull_work(
             question,
             spec_gaps,
         } => {
-            file_spec_gaps(shell, &spec_gaps, ticket.number)
+            file_spec_gaps(shell, &spec_gaps, ticket)
                 .await
                 .map_err(Failure::Apply)?;
             Err(Failure::HandBack {

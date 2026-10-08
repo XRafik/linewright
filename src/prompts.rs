@@ -15,6 +15,13 @@ pub struct Repo<'a> {
     pub spec_glob: &'a str,
 }
 
+/// A ticket, with the spec gaps earlier sessions on it filed that are still
+/// open.
+pub struct Ticket<'a> {
+    pub issue: &'a Issue,
+    pub filed_gaps: Vec<&'a Issue>,
+}
+
 /// A rebase or merge of the default branch that stopped on conflicts and is
 /// left in progress for the session to finish.
 pub struct Conflict {
@@ -87,7 +94,7 @@ pub fn tickets(briefs: &Briefs, repo: &Repo, pr: &MergedPull, spec_diff: &str) -
     compose(&briefs.to_tickets, &[], &task, contract)
 }
 
-pub fn implement(briefs: &Briefs, repo: &Repo, ticket: &Issue, branch: &str) -> String {
+pub fn implement(briefs: &Briefs, repo: &Repo, ticket: &Ticket, branch: &str) -> String {
     let mut task = String::new();
     repo_facts(&mut task, repo);
     let _ = writeln!(
@@ -95,7 +102,8 @@ pub fn implement(briefs: &Briefs, repo: &Repo, ticket: &Issue, branch: &str) -> 
         "- Branch: `{branch}`, fresh from `{}`. The fixed point for review is `origin/{}`.\n",
         repo.default_branch, repo.default_branch
     );
-    write_issue(&mut task, "The ticket", ticket);
+    write_issue(&mut task, "The ticket", ticket.issue);
+    write_filed_gaps(&mut task, &ticket.filed_gaps);
     compose(
         &briefs.implement,
         &implement_references(briefs),
@@ -116,7 +124,7 @@ and `spec_gaps` lists the gaps that did not block the ticket (often none)."#;
 pub fn pull_work(
     briefs: &Briefs,
     repo: &Repo,
-    ticket: &Issue,
+    ticket: &Ticket,
     pr: &Pull,
     work: &PullTask,
     conflict: Option<&Conflict>,
@@ -161,7 +169,8 @@ pub fn pull_work(
         }
         PullTask::Update => {}
     }
-    write_issue(&mut task, "The ticket", ticket);
+    write_issue(&mut task, "The ticket", ticket.issue);
+    write_filed_gaps(&mut task, &ticket.filed_gaps);
     let contract = r#"One of:
 
 { "outcome": "done", "comment": "<Markdown summary of what you changed, for the pull request>", "replies": [REPLY], "spec_gaps": [SPEC_GAP] }
@@ -271,6 +280,26 @@ fn write_issue(task: &mut String, heading: &str, issue: &Issue) {
         for comment in &issue.comments {
             write_comment(task, comment);
         }
+    }
+}
+
+/// The spec gaps earlier sessions on the ticket filed and the maintainer has
+/// not closed.
+fn write_filed_gaps(task: &mut String, gaps: &[&Issue]) {
+    if gaps.is_empty() {
+        return;
+    }
+    task.push_str(
+        "### Spec gaps already filed\n\nThese are open issues for the maintainer. Don't list them in `spec_gaps` again.\n\n",
+    );
+    for gap in gaps {
+        let _ = writeln!(
+            task,
+            "#### {} {}\n\n{}\n",
+            gap.number,
+            gap.title,
+            gap.body.trim()
+        );
     }
 }
 
