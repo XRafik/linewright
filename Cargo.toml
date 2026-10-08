@@ -6,6 +6,9 @@ description = "A spec-driven software factory: a server that turns spec changes 
 license = "MIT"
 publish = false
 
+[lints.rust]
+unsafe_code = "forbid"
+
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
