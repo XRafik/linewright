@@ -114,7 +114,7 @@ pub fn implement(briefs: &Briefs, repo: &Repo, ticket: &Ticket, branch: &str) ->
 
 const IMPLEMENT_CONTRACT: &str = r#"One of:
 
-{ "outcome": "done", "pr_body": "<the pull request body, per the PR reference>", "spec_gaps": [SPEC_GAP] }
+{ "outcome": "done", "pr_title": "<the pull request title, per the PR reference>", "pr_body": "<the pull request body, per the PR reference>", "spec_gaps": [SPEC_GAP] }
 { "outcome": "blocked", "question": "<the question the maintainer must answer>", "spec_gaps": [SPEC_GAP] }
 { "outcome": "gave-up", "reason": "<why the work cannot be done>" }
 

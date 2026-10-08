@@ -102,7 +102,7 @@ async fn a_replayed_spec_change_leaves_its_tickets_pull_requests_and_session_rec
             &[("src/gadgets.txt", "gadget\n")],
             "Gadgets",
         );
-        json(json!({"outcome": "done", "pr_body": "Adds gadgets."}))
+        json(json!({"outcome": "done", "pr_title": "Add gadgets", "pr_body": "Adds gadgets."}))
     });
     let out = dir.path().join("out");
 

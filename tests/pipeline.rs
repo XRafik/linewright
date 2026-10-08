@@ -53,7 +53,7 @@ fn implement_script(world: &World) {
     world.runtime.on(WorkKind::Implement, |call| {
         let file = format!("src/{}.txt", subject_file(call));
         commit_in(&call.spec.dir, &[(&file, "gadget\n")], "Add gadgets");
-        json(json!({"outcome": "done", "pr_body": "## Summary\n\nGadgets."}))
+        json(json!({"outcome": "done", "pr_title": "Add gadgets", "pr_body": "## Summary\n\nGadgets."}))
     });
 }
 
@@ -105,7 +105,7 @@ async fn a_merged_spec_change_becomes_tickets_worked_in_dependency_order_into_re
     let pulls = world.store.pulls();
     let pr = *pulls.last().unwrap();
     let view = world.store.snapshot_pull(pr).await;
-    assert_eq!(view.title, "Store gadgets");
+    assert_eq!(view.title, "Add gadgets");
     assert!(
         view.body
             .ends_with(&format!("Closes {}", store_ticket.number))
@@ -359,7 +359,7 @@ async fn a_branch_that_changes_the_spec_is_not_pushed_and_the_ticket_is_handed_b
             &[("docs/spec.md", "# Spec\n\nRewritten.\n")],
             "Edit spec",
         );
-        json(json!({"outcome": "done", "pr_body": "Edits the spec."}))
+        json(json!({"outcome": "done", "pr_title": "Edit the spec", "pr_body": "Edits the spec."}))
     });
     let ticket = world
         .store
@@ -395,6 +395,36 @@ async fn an_unparseable_result_is_sent_back_once_then_the_issue_is_handed_back()
     let issue = world.issue(issue);
     assert_eq!(labels(&issue), ["ready-for-human"]);
     assert!(last_comment(&issue).contains("still could not be used after 1 follow-up(s)"));
+}
+
+#[tokio::test]
+async fn the_pull_request_is_titled_as_the_session_wrote_and_a_blank_title_is_sent_back() {
+    let mut world = World::new().await;
+    world.runtime.on(WorkKind::Implement, |call| {
+        if call.followup.is_none() {
+            commit_in(&call.spec.dir, &[("src/gadget.txt", "gadget\n")], "Add");
+        }
+        let title = if call.followup.is_none() {
+            " "
+        } else {
+            " Report gadgets "
+        };
+        json(json!({"outcome": "done", "pr_title": title, "pr_body": "Gadgets."}))
+    });
+    world.store.open_issue(
+        "maintainer",
+        "Gadgets are missing",
+        "",
+        &["ready-for-agent"],
+    );
+
+    world.poll().await;
+
+    let prompts = world.runtime.prompts(WorkKind::Implement);
+    assert_eq!(prompts.len(), 2);
+    assert!(prompts[1].contains("`pr_title` is empty"));
+    let pr = world.store.snapshot_pull(world.store.pulls()[0]).await;
+    assert_eq!(pr.title, "Report gadgets");
 }
 
 #[tokio::test]

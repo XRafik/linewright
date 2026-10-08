@@ -674,7 +674,11 @@ async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Ticket<'_>) -> Result<(), 
         Ok(format!("\n\nThe work so far is on the branch `{branch}`."))
     };
     match result {
-        ImplementResult::Done { pr_body, spec_gaps } => {
+        ImplementResult::Done {
+            pr_title,
+            pr_body,
+            spec_gaps,
+        } => {
             store
                 .push(&ws.dir, &branch, PushMode::Replace)
                 .await
@@ -682,7 +686,7 @@ async fn implement(shell: &Shell, ctx: &Ctx, ticket: &Ticket<'_>) -> Result<(), 
             let pr = store
                 .open_pull(NewPull {
                     head: branch.clone(),
-                    title: ticket.issue.title.clone(),
+                    title: pr_title.into(),
                     body: closing(&pr_body, ticket.issue.number),
                 })
                 .await

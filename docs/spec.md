@@ -287,8 +287,8 @@ stateDiagram-v2
 ### Decisions
 
 - When the implementer is done the manager pushes its branch and opens a
-  **draft PR** from it to the default branch: title from the ticket, body written
-  by the agent for the diff, ending in `Closes #N`.
+  **draft PR** from it to the default branch: title and body written by the
+  agent for the diff, the body ending in `Closes #N`.
 - CI: wait for check runs and commit statuses on the head to appear (grace
   period default 5 min; none means the repository has no CI for drafts) and
   to complete (default 6 h, then `ready-for-human` naming the checks still

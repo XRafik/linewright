@@ -61,10 +61,33 @@ pub struct SpecGap {
     pub body: String,
 }
 
+/// A pull request's title as the session wrote it: trimmed, and not empty.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(try_from = "String")]
+pub struct PrTitle(String);
+
+impl TryFrom<String> for PrTitle {
+    type Error = &'static str;
+
+    fn try_from(title: String) -> Result<PrTitle, Self::Error> {
+        match title.trim() {
+            "" => Err("`pr_title` is empty"),
+            title => Ok(PrTitle(title.to_string())),
+        }
+    }
+}
+
+impl From<PrTitle> for String {
+    fn from(title: PrTitle) -> String {
+        title.0
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(tag = "outcome", rename_all = "kebab-case")]
 pub enum ImplementResult {
     Done {
+        pr_title: PrTitle,
         pr_body: String,
         #[serde(default)]
         spec_gaps: Vec<SpecGap>,

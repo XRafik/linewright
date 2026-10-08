@@ -260,7 +260,7 @@ impl World {
         self.runtime.on(WorkKind::Implement, |call| {
             let file = format!("src/{}.txt", subject_file(call));
             commit_in(&call.spec.dir, &[(&file, "done\n")], "Do the ticket");
-            json(serde_json::json!({"outcome": "done", "pr_body": "Does it."}))
+            json(serde_json::json!({"outcome": "done", "pr_title": "Do it", "pr_body": "Does it."}))
         });
         let ticket = self.store.open_issue(
             "maintainer",

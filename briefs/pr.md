@@ -1,9 +1,15 @@
 <!-- Forked from mattpocock/skills, skills/engineering/pr (MIT, see LICENSE; its Summary visuals credit Dex Horthy's show-me skill). Made non-interactive for Linewright. -->
 
-# Pull request body
+# Pull request
 
-The body of the pull request for your work, returned in your result. Use this
-template:
+The title and body of the pull request for your work, returned in your
+result.
+
+The title says what the change does, in the imperative and the domain language
+("Report input that isn't UTF-8"), not the symptom a report described ("tally
+crashes on a Latin-1 file").
+
+For the body, use this template:
 
 ```markdown
 ## Summary
