@@ -1,0 +1,674 @@
+//! The functional core, end to end on its data model: a state of the world in,
+//! the decisions out (`CODING_STANDARDS.md`, "Where tests go").
+
+use chrono::{DateTime, TimeDelta, Utc};
+use linewright::domain::*;
+use linewright::marker::{Stage, marked};
+use linewright::reconcile::*;
+use linewright::spec_glob::SpecGlob;
+
+const MACHINE: &str = "factory";
+
+fn t(minute: i64) -> Timestamp {
+    DateTime::parse_from_rfc3339("2026-10-01T12:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc)
+        + TimeDelta::minutes(minute)
+}
+
+fn policy() -> Policy {
+    Policy {
+        machine_user: Login::new(MACHINE),
+        spec_glob: SpecGlob::default(),
+        spec_lookback: TimeDelta::days(7),
+        max_workers: 4,
+        ci_grace: TimeDelta::minutes(5),
+        ci_timeout: TimeDelta::hours(6),
+        ci_attempts: 2,
+    }
+}
+
+fn issue(number: u64) -> Issue {
+    Issue {
+        number: Number(number),
+        title: format!("Issue {number}"),
+        body: String::new(),
+        author: Login::new("reporter"),
+        open: true,
+        created_at: t(0),
+        labels: vec![],
+        assignees: vec![],
+        comments: vec![],
+        blocked_by: vec![],
+        sub_issues: vec![],
+        events: vec![],
+    }
+}
+
+fn labeled(mut issue: Issue, label: &str) -> Issue {
+    issue.labels.push(label.to_string());
+    issue
+}
+
+fn snapshot(issues: Vec<Issue>) -> Snapshot {
+    Snapshot {
+        default_branch: "main".into(),
+        issues,
+        pulls: vec![],
+        merged: vec![],
+    }
+}
+
+fn decide(snapshot: &Snapshot) -> Vec<Action> {
+    reconcile(snapshot, &[], t(10), &policy())
+}
+
+#[test]
+fn a_needs_triage_issue_is_triaged() {
+    let world = snapshot(vec![labeled(issue(1), label::NEEDS_TRIAGE)]);
+
+    assert_eq!(
+        decide(&world),
+        vec![Action::Start(Work::Triage { issue: Number(1) })]
+    );
+}
+
+fn comment(author: &str, minute: i64, body: &str) -> Comment {
+    Comment {
+        author: Login::new(author),
+        body: body.to_string(),
+        created_at: t(minute),
+    }
+}
+
+fn triage_comment(minute: i64) -> Comment {
+    comment(
+        MACHINE,
+        minute,
+        &marked(Stage::Triage, "What version are you on?"),
+    )
+}
+
+#[test]
+fn a_reply_to_needs_info_sends_the_issue_back_to_triage() {
+    let mut asked = labeled(issue(1), label::NEEDS_INFO);
+    asked.comments = vec![triage_comment(1), comment("reporter", 2, "Version 3.")];
+
+    assert_eq!(
+        decide(&snapshot(vec![asked])),
+        vec![
+            Action::Relabel {
+                issue: Number(1),
+                remove: label::NEEDS_INFO.into(),
+                add: label::NEEDS_TRIAGE.into(),
+            },
+            Action::Start(Work::Triage { issue: Number(1) }),
+        ]
+    );
+}
+
+#[test]
+fn needs_info_waits_while_only_linewright_has_spoken_since_triage() {
+    let mut asked = labeled(issue(1), label::NEEDS_INFO);
+    asked.comments = vec![
+        comment("reporter", 0, "It crashes."),
+        triage_comment(1),
+        comment(MACHINE, 2, "Anything else?"),
+    ];
+
+    assert_eq!(decide(&snapshot(vec![asked])), vec![]);
+}
+
+fn merged(number: u64, files: &[&str]) -> MergedPull {
+    MergedPull {
+        number: Number(number),
+        title: format!("Spec PR {number}"),
+        body: String::new(),
+        author: Login::new("maintainer"),
+        merged_at: t(0),
+        base_ref: "main".into(),
+        labels: vec![],
+        files: files.iter().map(|f| f.to_string()).collect(),
+    }
+}
+
+#[test]
+fn a_merged_pull_request_that_touches_the_spec_is_cut_into_tickets() {
+    let mut world = snapshot(vec![]);
+    world.merged = vec![merged(5, &["src/main.rs", "docs/billing/invoices.md"])];
+
+    assert_eq!(
+        decide(&world),
+        vec![Action::Start(Work::Tickets { pr: Number(5) })]
+    );
+}
+
+#[test]
+fn only_unprocessed_spec_changes_by_people_within_the_lookback_are_picked_up() {
+    let code_only = merged(1, &["src/main.rs", "README.md"]);
+    let mut processed = merged(2, &["docs/spec.md"]);
+    processed.labels.push(label::SPEC_PROCESSED.into());
+    let mut by_machine = merged(3, &["docs/spec.md"]);
+    by_machine.author = Login::new(MACHINE);
+    let mut too_old = merged(4, &["docs/spec.md"]);
+    too_old.merged_at = t(10) - TimeDelta::days(8);
+    let mut other_base = merged(6, &["docs/spec.md"]);
+    other_base.base_ref = "release".into();
+    let mut handed_back = merged(7, &["docs/spec.md"]);
+    handed_back.labels.push(label::READY_FOR_HUMAN.into());
+    let mut world = snapshot(vec![]);
+    world.merged = vec![
+        code_only,
+        processed,
+        by_machine,
+        too_old,
+        other_base,
+        handed_back,
+    ];
+
+    assert_eq!(decide(&world), vec![]);
+}
+
+#[test]
+fn an_interrupted_decomposition_is_discarded_so_the_spec_change_is_cut_again() {
+    let mut partial = issue(9);
+    partial.author = Login::new(MACHINE);
+    partial.title = "Spec change: Spec PR 5".into();
+    partial.body = "Tickets for the spec change in #5.".into();
+    partial.sub_issues = vec![Linked {
+        number: Number(10),
+        open: true,
+    }];
+    let mut world = snapshot(vec![partial]);
+    world.merged = vec![merged(5, &["docs/spec.md"])];
+    let cutting = [LiveRun {
+        subject: Subject::SpecChange(Number(5)),
+        kind: WorkKind::Tickets,
+    }];
+
+    assert_eq!(
+        decide(&world),
+        vec![Action::DiscardTickets {
+            tracking: Number(9),
+            tickets: vec![Number(10)],
+        }]
+    );
+    assert_eq!(reconcile(&world, &cutting, t(10), &policy()), vec![]);
+}
+
+fn ticket(number: u64) -> Issue {
+    let mut ticket = labeled(issue(number), label::READY_FOR_AGENT);
+    ticket.author = Login::new(MACHINE);
+    ticket
+}
+
+fn claimed(mut issue: Issue) -> Issue {
+    issue.assignees.push(Login::new(MACHINE));
+    issue
+}
+
+fn blocked_by(mut issue: Issue, blocker: u64, open: bool) -> Issue {
+    issue.blocked_by.push(Linked {
+        number: Number(blocker),
+        open,
+    });
+    issue
+}
+
+fn implement(issue: u64) -> Action {
+    Action::Start(Work::Implement {
+        issue: Number(issue),
+    })
+}
+
+#[test]
+fn an_unblocked_ready_for_agent_issue_is_claimed_and_implemented() {
+    let world = snapshot(vec![blocked_by(ticket(2), 1, false)]);
+
+    assert_eq!(
+        decide(&world),
+        vec![Action::Claim { issue: Number(2) }, implement(2)]
+    );
+}
+
+#[test]
+fn a_ticket_waits_until_every_issue_blocking_it_is_closed() {
+    let world = snapshot(vec![blocked_by(blocked_by(ticket(3), 1, false), 2, true)]);
+
+    assert_eq!(decide(&world), vec![]);
+}
+
+#[test]
+fn a_claimed_ticket_with_no_pull_request_and_no_live_run_starts_a_fresh_run() {
+    let world = snapshot(vec![claimed(ticket(2))]);
+
+    assert_eq!(decide(&world), vec![implement(2)]);
+}
+
+#[test]
+fn a_ticket_with_a_live_run_is_left_to_it() {
+    let world = snapshot(vec![claimed(ticket(2))]);
+    let live = [LiveRun {
+        subject: Subject::Issue(Number(2)),
+        kind: WorkKind::Implement,
+    }];
+
+    assert_eq!(reconcile(&world, &live, t(10), &policy()), vec![]);
+}
+
+fn unassigned_by(mut issue: Issue, actor: &str, minute: i64) -> Issue {
+    issue.events.push(IssueEvent::Unassigned {
+        assignee: Login::new(MACHINE),
+        actor: Login::new(actor),
+        at: t(minute),
+    });
+    issue
+}
+
+fn labeled_at(mut issue: Issue, label: &str, minute: i64) -> Issue {
+    issue.events.push(IssueEvent::Labeled {
+        label: label.into(),
+        at: t(minute),
+    });
+    issue
+}
+
+#[test]
+fn unassigning_the_machine_user_stops_the_work_until_the_label_is_applied_again() {
+    let stopped = unassigned_by(
+        labeled_at(ticket(2), label::READY_FOR_AGENT, 1),
+        "maintainer",
+        2,
+    );
+    let restarted = labeled_at(
+        unassigned_by(
+            labeled_at(ticket(3), label::READY_FOR_AGENT, 1),
+            "maintainer",
+            2,
+        ),
+        label::READY_FOR_AGENT,
+        3,
+    );
+    let handed_back_by_linewright =
+        unassigned_by(labeled_at(ticket(4), label::READY_FOR_AGENT, 1), MACHINE, 2);
+
+    assert_eq!(
+        decide(&snapshot(vec![
+            stopped,
+            restarted,
+            handed_back_by_linewright
+        ])),
+        vec![
+            Action::Claim { issue: Number(3) },
+            implement(3),
+            Action::Claim { issue: Number(4) },
+            implement(4),
+        ]
+    );
+}
+
+#[test]
+fn an_issue_waiting_for_triage_is_not_claimed() {
+    let world = snapshot(vec![labeled(ticket(2), label::NEEDS_TRIAGE)]);
+
+    assert_eq!(decide(&world), vec![]);
+}
+
+fn live(issue: u64, kind: WorkKind) -> LiveRun {
+    LiveRun {
+        subject: Subject::Issue(Number(issue)),
+        kind,
+    }
+}
+
+#[test]
+fn runs_start_up_to_the_ceiling_triage_before_tickets_before_fresh_implementations() {
+    let mut world = snapshot(vec![
+        claimed(ticket(1)),
+        ticket(2),
+        labeled(issue(3), label::NEEDS_TRIAGE),
+        claimed(ticket(4)),
+        claimed(ticket(9)),
+    ]);
+    world.merged = vec![merged(5, &["docs/spec.md"])];
+    let busy = [live(9, WorkKind::Implement)];
+
+    assert_eq!(
+        reconcile(&world, &busy, t(10), &policy()),
+        vec![
+            Action::Start(Work::Triage { issue: Number(3) }),
+            Action::Start(Work::Tickets { pr: Number(5) }),
+            implement(1),
+        ]
+    );
+}
+
+#[test]
+fn a_run_is_cancelled_when_its_issue_stops_qualifying() {
+    let mut unlabeled = claimed(issue(1));
+    unlabeled.labels.clear();
+    let unassigned = ticket(2);
+    let mut closed = claimed(ticket(3));
+    closed.open = false;
+    let triaged = labeled(issue(5), label::READY_FOR_AGENT);
+    let still_wanted = claimed(ticket(6));
+    let world = snapshot(vec![unlabeled, unassigned, closed, triaged, still_wanted]);
+    let runs = [
+        live(1, WorkKind::Implement),
+        live(2, WorkKind::Rework),
+        live(3, WorkKind::FixCi),
+        live(4, WorkKind::Update),
+        live(5, WorkKind::Triage),
+        live(6, WorkKind::Implement),
+    ];
+
+    let cancelled: Vec<Subject> = reconcile(&world, &runs, t(10), &policy())
+        .into_iter()
+        .filter_map(|a| match a {
+            Action::Cancel { subject, .. } => Some(subject),
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(
+        cancelled,
+        [1, 2, 3, 4, 5].map(|n| Subject::Issue(Number(n))).to_vec()
+    );
+}
+
+#[test]
+fn a_tickets_run_is_cancelled_when_its_spec_change_is_marked_processed() {
+    let mut processed = merged(5, &["docs/spec.md"]);
+    processed.labels.push(label::SPEC_PROCESSED.into());
+    let mut world = snapshot(vec![]);
+    world.merged = vec![processed];
+    let runs = [LiveRun {
+        subject: Subject::SpecChange(Number(5)),
+        kind: WorkKind::Tickets,
+    }];
+
+    assert!(matches!(
+        reconcile(&world, &runs, t(10), &policy()).as_slice(),
+        [Action::Cancel {
+            subject: Subject::SpecChange(Number(5)),
+            ..
+        }]
+    ));
+}
+
+fn pull(number: u64, closes: u64) -> Pull {
+    Pull {
+        number: Number(number),
+        title: format!("Ticket {closes}"),
+        body: format!("Closes #{closes}"),
+        author: Login::new(MACHINE),
+        created_at: t(1),
+        head_ref: format!("{closes}-ticket"),
+        head_sha: "abc123".into(),
+        state: PullState::Open { draft: true },
+        closes: vec![Number(closes)],
+        pushes: vec![Push {
+            by: Login::new(MACHINE),
+            at: t(1),
+        }],
+        mergeability: Mergeability::Clean,
+        checks: vec![],
+        comments: vec![],
+        reviews: vec![],
+        threads: vec![],
+    }
+}
+
+fn check(name: &str, state: CheckState) -> Check {
+    Check {
+        name: name.into(),
+        state,
+    }
+}
+
+fn in_review(pr: Pull) -> Snapshot {
+    let issue = pr.closes[0].0;
+    let mut ticket = claimed(ticket(issue));
+    ticket.assignees.push(Login::new("maintainer"));
+    let mut world = snapshot(vec![ticket]);
+    world.pulls = vec![pr];
+    world
+}
+
+fn at(world: &Snapshot, minute: i64) -> Vec<Action> {
+    reconcile(world, &[], t(minute), &policy())
+}
+
+#[test]
+fn a_green_draft_is_marked_ready_and_review_requested_from_the_human_assignees() {
+    let mut pr = pull(20, 2);
+    pr.checks = vec![check("test", CheckState::Passed)];
+
+    assert_eq!(
+        at(&in_review(pr), 10),
+        vec![Action::MarkReady {
+            pr: Number(20),
+            reviewers: vec![Login::new("maintainer")],
+        }]
+    );
+}
+
+#[test]
+fn a_draft_with_no_checks_by_the_end_of_the_grace_period_has_no_ci() {
+    let world = in_review(pull(20, 2));
+
+    assert_eq!(at(&world, 5), vec![]);
+    assert!(matches!(
+        at(&world, 7).as_slice(),
+        [Action::MarkReady { .. }]
+    ));
+}
+
+#[test]
+fn a_draft_waits_while_checks_run() {
+    let mut pr = pull(20, 2);
+    pr.checks = vec![
+        check("test", CheckState::Passed),
+        check("lint", CheckState::Pending),
+    ];
+
+    assert_eq!(at(&in_review(pr), 30), vec![]);
+}
+
+fn ci_fix_comment(minute: i64) -> Comment {
+    comment(
+        MACHINE,
+        minute,
+        &marked(Stage::Ci, "Fixed the failing test."),
+    )
+}
+
+#[test]
+fn a_failing_check_starts_a_fix_and_after_the_last_attempt_the_ticket_is_handed_back() {
+    let mut pr = pull(20, 2);
+    pr.checks = vec![
+        check("test", CheckState::Failed),
+        check("lint", CheckState::Passed),
+    ];
+    let first = in_review(pr.clone());
+    pr.comments = vec![ci_fix_comment(3), ci_fix_comment(6)];
+    let exhausted = in_review(pr);
+
+    assert_eq!(
+        at(&first, 10),
+        vec![Action::Start(Work::FixCi {
+            issue: Number(2),
+            pr: Number(20),
+            failing: vec!["test".into()],
+        })]
+    );
+    assert!(matches!(
+        at(&exhausted, 10).as_slice(),
+        [Action::HandBack { issue: Number(2), stage: Stage::Ci, reason }] if reason.contains("`test`")
+    ));
+}
+
+#[test]
+fn a_ticket_given_back_after_a_ci_timeout_waits_a_full_timeout_again() {
+    let mut pr = pull(20, 2);
+    pr.checks = vec![check("e2e", CheckState::Pending)];
+    let mut world = in_review(pr);
+    world.issues[0].comments = vec![comment(
+        MACHINE,
+        6 * 60 + 3,
+        &marked(
+            Stage::Ci,
+            "CI did not complete within 6h: `e2e` still running.",
+        ),
+    )];
+
+    assert_eq!(at(&world, 6 * 60 + 10), vec![]);
+}
+
+#[test]
+fn checks_that_never_complete_hand_the_ticket_back_at_the_ci_timeout() {
+    let mut pr = pull(20, 2);
+    pr.checks = vec![check("e2e", CheckState::Pending)];
+    let world = in_review(pr);
+
+    assert_eq!(at(&world, 6 * 60), vec![]);
+    assert!(matches!(
+        at(&world, 6 * 60 + 2).as_slice(),
+        [Action::HandBack { issue: Number(2), stage: Stage::Ci, reason }] if reason.contains("`e2e`")
+    ));
+}
+
+fn rework(issue: u64, pr: u64) -> Action {
+    Action::Start(Work::Rework {
+        issue: Number(issue),
+        pr: Number(pr),
+    })
+}
+
+fn ready(mut pr: Pull) -> Pull {
+    pr.state = PullState::Open { draft: false };
+    pr.checks = vec![check("test", CheckState::Passed)];
+    pr
+}
+
+#[test]
+fn a_comment_after_linewrights_last_push_starts_a_rework_run() {
+    let mut pr = ready(pull(20, 2));
+    pr.comments = vec![comment("maintainer", 4, "Please rename `foo`.")];
+
+    assert_eq!(at(&in_review(pr), 10), vec![rework(2, 20)]);
+}
+
+fn review(author: &str, state: ReviewState, body: &str, minute: i64) -> Review {
+    Review {
+        author: Login::new(author),
+        state,
+        body: body.into(),
+        submitted_at: t(minute),
+    }
+}
+
+#[test]
+fn a_review_with_comments_starts_a_rework_run_but_one_that_only_approves_does_not() {
+    let mut pr = ready(pull(20, 2));
+    pr.reviews = vec![review("maintainer", ReviewState::Approved, "", 4)];
+    let approved = in_review(pr.clone());
+    pr.threads = vec![Thread {
+        id: "T1".into(),
+        path: "src/lib.rs".into(),
+        resolved: false,
+        comments: vec![comment("maintainer", 4, "Nit: typo.")],
+    }];
+    let approved_with_a_comment = in_review(pr);
+
+    assert_eq!(at(&approved, 10), vec![]);
+    assert_eq!(at(&approved_with_a_comment, 10), vec![rework(2, 20)]);
+}
+
+#[test]
+fn feedback_already_answered_starts_nothing() {
+    let mut pr = ready(pull(20, 2));
+    pr.comments = vec![
+        comment("reviewer", 0, "Looks odd."),
+        comment(MACHINE, 3, "Thanks!"),
+    ];
+    let before_the_push = in_review(pr.clone());
+    pr.comments = vec![
+        comment("coverage[bot]", 4, "Coverage dropped 0.1%."),
+        comment(
+            MACHINE,
+            5,
+            &marked(Stage::Rework, "No change needed: noise."),
+        ),
+    ];
+    let answered_without_a_push = in_review(pr);
+
+    assert_eq!(at(&before_the_push, 10), vec![]);
+    assert_eq!(at(&answered_without_a_push, 10), vec![]);
+}
+
+#[test]
+fn a_pull_request_behind_or_in_conflict_with_the_default_branch_is_brought_up_to_date() {
+    let update = Action::Start(Work::Update {
+        issue: Number(2),
+        pr: Number(20),
+    });
+    let mut behind = ready(pull(20, 2));
+    behind.mergeability = Mergeability::Behind;
+    let mut conflicting = ready(pull(20, 2));
+    conflicting.mergeability = Mergeability::Conflicting;
+
+    assert_eq!(at(&in_review(behind), 10), vec![update.clone()]);
+    assert_eq!(at(&in_review(conflicting), 10), vec![update]);
+}
+
+#[test]
+fn a_pull_request_closed_without_merging_hands_the_ticket_back_once() {
+    let mut pr = pull(20, 2);
+    pr.state = PullState::Closed { at: t(5) };
+    let closed = in_review(pr);
+    let mut handed_back = closed.clone();
+    handed_back.issues[0].comments = vec![comment(
+        MACHINE,
+        6,
+        &marked(Stage::Review, "#20 was closed without merging."),
+    )];
+
+    assert!(matches!(
+        at(&closed, 10).as_slice(),
+        [Action::HandBack {
+            issue: Number(2),
+            stage: Stage::Review,
+            ..
+        }]
+    ));
+    assert_eq!(at(&handed_back, 10), vec![implement(2)]);
+}
+
+fn tracking(number: u64, pr: u64, tickets: &[(u64, bool)]) -> Issue {
+    let mut tracking = issue(number);
+    tracking.author = Login::new(MACHINE);
+    tracking.title = format!("Spec change: Spec PR {pr}");
+    tracking.body = format!("Tickets for the spec change in #{pr}.");
+    tracking.sub_issues = tickets
+        .iter()
+        .map(|&(n, open)| Linked {
+            number: Number(n),
+            open,
+        })
+        .collect();
+    tracking
+}
+
+#[test]
+fn a_tracking_issue_is_closed_when_all_its_tickets_are() {
+    let world = snapshot(vec![
+        tracking(9, 5, &[(10, false), (11, false)]),
+        tracking(12, 6, &[(13, false), (14, true)]),
+    ]);
+
+    assert_eq!(
+        decide(&world),
+        vec![Action::CloseTracking { issue: Number(9) }]
+    );
+}

@@ -1,0 +1,645 @@
+//! The functional core: one poll's decisions as a pure function of the
+//! store's snapshot, the runs in flight and the clock (`docs/architecture.md`,
+//! "Functional core, imperative shell"). The rules are `docs/spec.md`'s.
+
+use chrono::TimeDelta;
+
+use crate::domain::{
+    CheckState, Comment, Issue, IssueEvent, Login, Mergeability, MergedPull, Number, Pull,
+    PullState, Review, ReviewState, Snapshot, Thread, Timestamp, label,
+};
+use crate::marker::{Stage, stage_of};
+use crate::spec_glob::SpecGlob;
+use crate::tracking;
+
+/// The settings the decisions depend on.
+#[derive(Clone, Debug)]
+pub struct Policy {
+    pub machine_user: Login,
+    pub spec_glob: SpecGlob,
+    pub spec_lookback: TimeDelta,
+    pub max_workers: usize,
+    pub ci_grace: TimeDelta,
+    pub ci_timeout: TimeDelta,
+    pub ci_attempts: u32,
+}
+
+/// What a run works on. At most one run per subject is in flight.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Subject {
+    Issue(Number),
+    SpecChange(Number),
+}
+
+/// A run to start.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Work {
+    Triage {
+        issue: Number,
+    },
+    Tickets {
+        pr: Number,
+    },
+    /// A fresh run: no open pull request for the ticket.
+    Implement {
+        issue: Number,
+    },
+    Rework {
+        issue: Number,
+        pr: Number,
+    },
+    FixCi {
+        issue: Number,
+        pr: Number,
+        failing: Vec<String>,
+    },
+    /// Bring the pull request's branch up to date, and nothing else.
+    Update {
+        issue: Number,
+        pr: Number,
+    },
+}
+
+impl Work {
+    pub fn subject(&self) -> Subject {
+        match self {
+            Work::Triage { issue }
+            | Work::Implement { issue }
+            | Work::Rework { issue, .. }
+            | Work::FixCi { issue, .. }
+            | Work::Update { issue, .. } => Subject::Issue(*issue),
+            Work::Tickets { pr } => Subject::SpecChange(*pr),
+        }
+    }
+
+    pub fn kind(&self) -> WorkKind {
+        match self {
+            Work::Triage { .. } => WorkKind::Triage,
+            Work::Tickets { .. } => WorkKind::Tickets,
+            Work::Implement { .. } => WorkKind::Implement,
+            Work::Rework { .. } => WorkKind::Rework,
+            Work::FixCi { .. } => WorkKind::FixCi,
+            Work::Update { .. } => WorkKind::Update,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum WorkKind {
+    Triage,
+    Tickets,
+    Implement,
+    Rework,
+    FixCi,
+    Update,
+}
+
+/// A run in flight.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LiveRun {
+    pub subject: Subject,
+    pub kind: WorkKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Action {
+    Start(Work),
+    Cancel {
+        subject: Subject,
+        reason: String,
+    },
+    /// Add the machine user as an assignee.
+    Claim {
+        issue: Number,
+    },
+    Relabel {
+        issue: Number,
+        remove: String,
+        add: String,
+    },
+    /// Give the issue to the maintainer: `ready-for-human`, unassigned, and a
+    /// comment that says why.
+    HandBack {
+        issue: Number,
+        stage: Stage,
+        reason: String,
+    },
+    MarkReady {
+        pr: Number,
+        reviewers: Vec<Login>,
+    },
+    CloseTracking {
+        issue: Number,
+    },
+    /// Close an interrupted decomposition's tracking issue and its open
+    /// tickets, so the spec change is cut into tickets again.
+    DiscardTickets {
+        tracking: Number,
+        tickets: Vec<Number>,
+    },
+}
+
+pub fn reconcile(
+    snapshot: &Snapshot,
+    live: &[LiveRun],
+    now: Timestamp,
+    policy: &Policy,
+) -> Vec<Action> {
+    let mut plan = Plan {
+        now,
+        actions: vec![],
+        starts: vec![],
+    };
+    let is_live = |subject: Subject| live.iter().any(|run| run.subject == subject);
+
+    for run in live {
+        if let Some(reason) = cancel_reason(run, snapshot, policy) {
+            plan.act(Action::Cancel {
+                subject: run.subject,
+                reason,
+            });
+        }
+    }
+
+    for pr in snapshot
+        .merged
+        .iter()
+        .filter(|pr| is_spec_change(pr, snapshot, now, policy))
+    {
+        if is_live(Subject::SpecChange(pr.number)) {
+            continue;
+        }
+        // The pull request is labeled processed last, so a tracking issue
+        // without the label is a decomposition that stopped part way.
+        let partial = snapshot.issues.iter().find(|i| {
+            i.open && tracking::spec_change_of(i, &policy.machine_user) == Some(pr.number)
+        });
+        match partial {
+            Some(partial) => plan.act(Action::DiscardTickets {
+                tracking: partial.number,
+                tickets: partial
+                    .sub_issues
+                    .iter()
+                    .filter(|t| t.open)
+                    .map(|t| t.number)
+                    .collect(),
+            }),
+            None => plan.start(Work::Tickets { pr: pr.number }),
+        }
+    }
+
+    for issue in snapshot.issues.iter().filter(|i| i.open) {
+        let subject = Subject::Issue(issue.number);
+        let is_tracking = tracking::spec_change_of(issue, &policy.machine_user).is_some();
+        if is_tracking && !issue.sub_issues.is_empty() && issue.sub_issues.iter().all(|t| !t.open) {
+            plan.act(Action::CloseTracking {
+                issue: issue.number,
+            });
+        }
+        let answered = has_answer(issue, policy);
+        if answered {
+            plan.act(Action::Relabel {
+                issue: issue.number,
+                remove: label::NEEDS_INFO.into(),
+                add: label::NEEDS_TRIAGE.into(),
+            });
+        }
+        if answered || wants_triage(issue, policy) {
+            if !is_live(subject) {
+                plan.start(Work::Triage {
+                    issue: issue.number,
+                });
+            }
+        } else if issue.has_label(label::READY_FOR_AGENT) && !issue.has_label(label::NEEDS_TRIAGE) {
+            implementation(issue, snapshot, is_live(subject), policy, &mut plan);
+        }
+    }
+
+    plan.into_actions(policy.max_workers.saturating_sub(live.len()))
+}
+
+/// Why a run in flight must stop, if it must: its subject no longer asks for
+/// the work. Runs stop when their issue loses its label, is closed or, for
+/// implementation, loses the machine user as an assignee.
+fn cancel_reason(run: &LiveRun, snapshot: &Snapshot, policy: &Policy) -> Option<String> {
+    match run.subject {
+        Subject::SpecChange(pr) => {
+            let pr = snapshot.merged_pull(pr)?;
+            [label::SPEC_PROCESSED, label::READY_FOR_HUMAN]
+                .into_iter()
+                .find(|l| pr.has_label(l))
+                .map(|l| format!("{} was labeled `{l}`", pr.number))
+        }
+        Subject::Issue(number) => {
+            let Some(issue) = snapshot.issue(number).filter(|i| i.open) else {
+                return Some(format!("{number} was closed"));
+            };
+            let wanted = match run.kind {
+                WorkKind::Triage => label::NEEDS_TRIAGE,
+                _ => label::READY_FOR_AGENT,
+            };
+            if !issue.has_label(wanted) {
+                Some(format!("`{wanted}` was removed from {number}"))
+            } else if run.kind != WorkKind::Triage && !issue.is_assigned(&policy.machine_user) {
+                Some(format!(
+                    "{} was unassigned from {number}",
+                    policy.machine_user
+                ))
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// The actions of one poll, with the runs to start held back until the
+/// ceiling on simultaneous runs is applied.
+struct Plan {
+    now: Timestamp,
+    actions: Vec<Action>,
+    starts: Vec<Start>,
+}
+
+struct Start {
+    /// The issue to claim before the run starts.
+    claim: Option<Number>,
+    work: Work,
+}
+
+impl Plan {
+    fn act(&mut self, action: Action) {
+        self.actions.push(action);
+    }
+
+    fn start(&mut self, work: Work) {
+        self.starts.push(Start { claim: None, work });
+    }
+
+    fn claim_and_implement(&mut self, issue: Number) {
+        self.starts.push(Start {
+            claim: Some(issue),
+            work: Work::Implement { issue },
+        });
+    }
+
+    /// Every action, then as many runs as there is room for, work closest to
+    /// a person first: pull requests, then triage, then tickets, then fresh
+    /// implementations, each oldest first.
+    fn into_actions(self, room: usize) -> Vec<Action> {
+        let mut starts = self.starts;
+        starts.sort_by_key(|s| (rank(s.work.kind()), s.work.subject()));
+        let mut actions = self.actions;
+        for start in starts.into_iter().take(room) {
+            if let Some(issue) = start.claim {
+                actions.push(Action::Claim { issue });
+            }
+            actions.push(Action::Start(start.work));
+        }
+        actions
+    }
+}
+
+fn rank(kind: WorkKind) -> u8 {
+    match kind {
+        WorkKind::Rework | WorkKind::FixCi | WorkKind::Update => 0,
+        WorkKind::Triage => 1,
+        WorkKind::Tickets => 2,
+        WorkKind::Implement => 3,
+    }
+}
+
+/// An issue labeled `ready-for-agent`: claim it when it is unblocked, and
+/// drive it to a pull request that is green and ready for review.
+fn implementation(
+    issue: &Issue,
+    snapshot: &Snapshot,
+    live: bool,
+    policy: &Policy,
+    plan: &mut Plan,
+) {
+    let claimed = issue.is_assigned(&policy.machine_user);
+    if live || (!claimed && stopped_by_unassign(issue, policy)) {
+        return;
+    }
+    let mut pulls = snapshot
+        .pulls
+        .iter()
+        .filter(|p| p.author == policy.machine_user && p.closes.contains(&issue.number));
+    if let Some(pr) = pulls
+        .clone()
+        .filter(|p| p.is_open())
+        .max_by_key(|p| p.number)
+    {
+        if !claimed {
+            plan.act(Action::Claim {
+                issue: issue.number,
+            });
+        }
+        return in_review(issue, pr, policy, plan);
+    }
+    if claimed {
+        let closed = pulls
+            .find(|p| matches!(p.state, PullState::Closed { at } if !linewright_commented_since(issue, at, policy)));
+        if let Some(closed) = closed {
+            return plan.act(Action::HandBack {
+                issue: issue.number,
+                stage: Stage::Review,
+                reason: format!("{} was closed without merging.", closed.number),
+            });
+        }
+    }
+    if issue.blocked_by.iter().any(|b| b.open) {
+        return;
+    }
+    if claimed {
+        plan.start(Work::Implement {
+            issue: issue.number,
+        });
+    } else {
+        plan.claim_and_implement(issue.number);
+    }
+}
+
+fn last_linewright_comment(issue: &Issue, machine: &Login) -> Option<Timestamp> {
+    issue
+        .comments
+        .iter()
+        .filter(|c| stage_of(c, machine).is_some())
+        .map(|c| c.created_at)
+        .max()
+}
+
+fn linewright_commented_since(issue: &Issue, since: Timestamp, policy: &Policy) -> bool {
+    issue
+        .comments
+        .iter()
+        .any(|c| c.created_at > since && stage_of(c, &policy.machine_user).is_some())
+}
+
+/// An open pull request for the issue: address feedback, keep it up to date
+/// and get CI green, in that order, then mark it ready for review.
+fn in_review(issue: &Issue, pr: &Pull, policy: &Policy, plan: &mut Plan) {
+    let (issue_number, pr_number) = (issue.number, pr.number);
+    let machine = &policy.machine_user;
+    if !new_feedback(pr, machine).is_empty() {
+        return plan.start(Work::Rework {
+            issue: issue_number,
+            pr: pr_number,
+        });
+    }
+    if matches!(
+        pr.mergeability,
+        Mergeability::Behind | Mergeability::Conflicting
+    ) {
+        return plan.start(Work::Update {
+            issue: issue_number,
+            pr: pr_number,
+        });
+    }
+    let names = |state: CheckState| -> Vec<String> {
+        pr.checks
+            .iter()
+            .filter(|c| c.state == state)
+            .map(|c| c.name.clone())
+            .collect()
+    };
+    let (pending, failed) = (names(CheckState::Pending), names(CheckState::Failed));
+    let pushed = pr
+        .pushes
+        .iter()
+        .map(|p| p.at)
+        .chain([pr.created_at])
+        .max()
+        .unwrap_or(pr.created_at);
+    let now = plan.now;
+    if pr.checks.is_empty() && now < pushed + policy.ci_grace {
+        return;
+    }
+    // A ticket given back to the maintainer and labeled again waits a full
+    // timeout again.
+    let waiting_since = last_linewright_comment(issue, machine).map_or(pushed, |c| c.max(pushed));
+    if !pending.is_empty() {
+        if now > waiting_since + policy.ci_timeout {
+            plan.act(Action::HandBack {
+                issue: issue_number,
+                stage: Stage::Ci,
+                reason: format!(
+                    "CI did not complete within {}: {} still running.",
+                    humanize(policy.ci_timeout),
+                    code_list(&pending)
+                ),
+            });
+        }
+        return;
+    }
+    if !failed.is_empty() {
+        let cycle_start = [
+            Some(pr.created_at),
+            last_marked(&pr.comments, Stage::Rework, machine),
+            last_linewright_comment(issue, machine),
+        ]
+        .into_iter()
+        .flatten()
+        .max();
+        let attempts = pr
+            .comments
+            .iter()
+            .filter(|c| stage_of(c, machine) == Some(Stage::Ci) && Some(c.created_at) > cycle_start)
+            .count();
+        if attempts < policy.ci_attempts as usize {
+            plan.start(Work::FixCi {
+                issue: issue_number,
+                pr: pr_number,
+                failing: failed,
+            });
+        } else {
+            plan.act(Action::HandBack {
+                issue: issue_number,
+                stage: Stage::Ci,
+                reason: format!(
+                    "{} still failing after {attempts} fix attempts.",
+                    code_list(&failed)
+                ),
+            });
+        }
+        return;
+    }
+    if pr.state == (PullState::Open { draft: true }) {
+        plan.act(Action::MarkReady {
+            pr: pr_number,
+            reviewers: issue
+                .assignees
+                .iter()
+                .filter(|a| a.is_person_besides(machine))
+                .cloned()
+                .collect(),
+        });
+    }
+}
+
+/// Feedback on a pull request that Linewright has not answered yet.
+#[derive(Debug, Default)]
+pub struct Feedback<'a> {
+    pub comments: Vec<&'a Comment>,
+    pub reviews: Vec<&'a Review>,
+    /// Threads with new comments, and those comments.
+    pub threads: Vec<(&'a Thread, Vec<&'a Comment>)>,
+}
+
+impl Feedback<'_> {
+    pub fn is_empty(&self) -> bool {
+        self.comments.is_empty() && self.reviews.is_empty() && self.threads.is_empty()
+    }
+}
+
+/// Comments and reviews from anyone other than the machine user, posted after
+/// Linewright last answered: its last push, or its last rework comment when a
+/// rework needed no change. A review that only approves is not feedback.
+pub fn new_feedback<'a>(pr: &'a Pull, machine: &Login) -> Feedback<'a> {
+    let pushed = pr.pushes.iter().filter(|p| &p.by == machine).map(|p| p.at);
+    let created = (&pr.author == machine).then_some(pr.created_at);
+    let answered = pushed
+        .chain(created)
+        .chain(last_marked(&pr.comments, Stage::Rework, machine))
+        .max();
+    let new = |author: &Login, at: Timestamp| {
+        author != machine && answered.is_none_or(|answered| at > answered)
+    };
+    Feedback {
+        comments: pr
+            .comments
+            .iter()
+            .filter(|c| new(&c.author, c.created_at))
+            .collect(),
+        reviews: pr
+            .reviews
+            .iter()
+            .filter(|r| new(&r.author, r.submitted_at))
+            .filter(|r| !(r.state == ReviewState::Approved && r.body.trim().is_empty()))
+            .collect(),
+        threads: pr
+            .threads
+            .iter()
+            .filter_map(|t| {
+                let comments: Vec<_> = t
+                    .comments
+                    .iter()
+                    .filter(|c| new(&c.author, c.created_at))
+                    .collect();
+                (!comments.is_empty()).then_some((t, comments))
+            })
+            .collect(),
+    }
+}
+
+fn last_marked(
+    comments: &[crate::domain::Comment],
+    stage: Stage,
+    machine: &Login,
+) -> Option<Timestamp> {
+    comments
+        .iter()
+        .filter(|c| stage_of(c, machine) == Some(stage))
+        .map(|c| c.created_at)
+        .max()
+}
+
+fn code_list(names: &[String]) -> String {
+    names
+        .iter()
+        .map(|n| format!("`{n}`"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn humanize(delta: TimeDelta) -> String {
+    humantime::format_duration(delta.to_std().unwrap_or_default()).to_string()
+}
+
+/// A person unassigning the machine user stops the issue's work until
+/// `ready-for-agent` is applied again.
+fn stopped_by_unassign(issue: &Issue, policy: &Policy) -> bool {
+    let machine = &policy.machine_user;
+    let unassigned = issue
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            IssueEvent::Unassigned {
+                assignee,
+                actor,
+                at,
+            } if assignee == machine && actor != machine => Some(*at),
+            _ => None,
+        })
+        .max();
+    let labeled = last_labeled(issue, label::READY_FOR_AGENT);
+    match (unassigned, labeled) {
+        (Some(unassigned), Some(labeled)) => unassigned > labeled,
+        (Some(_), None) => true,
+        (None, _) => false,
+    }
+}
+
+fn last_labeled(issue: &Issue, name: &str) -> Option<Timestamp> {
+    issue
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            IssueEvent::Labeled { label, at } if label == name => Some(*at),
+            _ => None,
+        })
+        .max()
+}
+
+/// Triage runs on `needs-triage` issues not authored by the machine user:
+/// tickets Linewright creates are already briefed.
+fn wants_triage(issue: &Issue, policy: &Policy) -> bool {
+    issue.has_label(label::NEEDS_TRIAGE) && issue.author != policy.machine_user
+}
+
+/// `needs-info` is the one state a comment leaves: anyone other than the
+/// machine user commenting after the question was asked, that is after
+/// Linewright's last triage comment or the label, whichever is later.
+fn has_answer(issue: &Issue, policy: &Policy) -> bool {
+    if !issue.has_label(label::NEEDS_INFO) || issue.author == policy.machine_user {
+        return false;
+    }
+    let last_triage = issue
+        .comments
+        .iter()
+        .filter(|c| stage_of(c, &policy.machine_user) == Some(Stage::Triage))
+        .map(|c| c.created_at)
+        .max();
+    let Some(asked) = last_triage.max(last_labeled(issue, label::NEEDS_INFO)) else {
+        return false;
+    };
+    issue
+        .comments
+        .iter()
+        .any(|c| c.author != policy.machine_user && c.created_at > asked)
+}
+
+/// The spec changes waiting to be cut into tickets.
+pub fn pending_spec_changes<'a>(
+    snapshot: &'a Snapshot,
+    now: Timestamp,
+    policy: &Policy,
+) -> Vec<&'a MergedPull> {
+    snapshot
+        .merged
+        .iter()
+        .filter(|pr| is_spec_change(pr, snapshot, now, policy))
+        .collect()
+}
+
+/// A spec change: merged into the default branch within the lookback window,
+/// touching the spec, not authored by the machine user, and neither processed
+/// nor handed back.
+fn is_spec_change(pr: &MergedPull, snapshot: &Snapshot, now: Timestamp, policy: &Policy) -> bool {
+    pr.base_ref == snapshot.default_branch
+        && pr.merged_at >= now - policy.spec_lookback
+        && pr.author != policy.machine_user
+        && !pr.has_label(label::SPEC_PROCESSED)
+        && !pr.has_label(label::READY_FOR_HUMAN)
+        && pr.files.iter().any(|f| policy.spec_glob.matches(f))
+}

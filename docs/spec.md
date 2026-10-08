@@ -116,7 +116,8 @@ it: labels start and stop work, and pull requests show it.
   triage and `ready-for-agent` asks for implementation. Spec changes need no
   label: every merged pull request that touches the spec is picked up.
   Removing `ready-for-agent`, unassigning the machine user or closing the
-  issue stops its work.
+  issue stops its work; after an unassignment, applying `ready-for-agent`
+  again restarts it.
 - Machine state is derived from GitHub, never labeled. An issue is
   **claimed** when the machine user is among its assignees, and **in review**
   when an open pull request by the machine user closes it.
@@ -220,6 +221,12 @@ stateDiagram-v2
   blocked by with GitHub's issue dependencies.
 - The PR is labeled `linewright:spec-processed` once its tickets exist, also
   when there are none, in which case no tracking issue is created.
+- A decomposition that cannot finish hands the spec change back: the PR is
+  labeled `ready-for-human` with a comment that says why, and removing the
+  label tries again.
+- A decomposition interrupted part way (the tracking issue exists, the PR is
+  not labeled) is discarded, its tracking issue and tickets closed as not
+  planned with a comment, and the spec change is cut again.
 - A ticket is claimable when every issue blocking it is closed. Linewright
   closes the tracking issue when all its sub-issues are closed.
 - The decomposition is Linewright's responsibility: it runs from a merged
@@ -283,8 +290,9 @@ stateDiagram-v2
   by the agent for the diff, ending in `Closes #N`.
 - CI: wait for check runs and commit statuses on the head to appear (grace
   period default 5 min; none means the repository has no CI for drafts) and
-  to complete (default 6 h). A failure starts a fix session, at most 2
-  attempts, then `ready-for-human` naming the failing check.
+  to complete (default 6 h, then `ready-for-human` naming the checks still
+  running). A failure starts a fix session, at most 2 attempts, then
+  `ready-for-human` naming the failing check.
 - Green: the PR is marked ready for review, and review is requested from the
   ticket's human assignees.
 - **Rework**: a comment or review from anyone other than the machine user,
@@ -294,7 +302,8 @@ stateDiagram-v2
   and re-requests review. Comments from people are always addressed; those
   from other bots at the implementer's judgment, and it may answer that a
   comment needs no change. The implementer resolves the threads bots opened
-  and leaves people's threads for them to resolve.
+  and leaves people's threads for them to resolve. Feedback posted while a run
+  works goes to its session before the run pushes.
 - **Keeping up to date**: every run first brings the branch up to date with
   the default branch, and a PR GitHub reports behind or unmergeable gets a
   run for that alone, mechanical unless there is a conflict. Whether that is

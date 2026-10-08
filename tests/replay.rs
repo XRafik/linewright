@@ -1,0 +1,137 @@
+//! Replay, end to end at the operator's level: a case directory in, the
+//! store's final state and every session's record out as files.
+
+mod support;
+
+use std::path::Path;
+use std::process::Command;
+use std::sync::Arc;
+
+use linewright::case::{Case, Event, replay};
+use linewright::domain::{Login, Number, UpdateMethod};
+use linewright::reconcile::WorkKind;
+use serde_json::json;
+use support::*;
+
+fn git(dir: &Path, args: &[&str]) -> String {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+/// A case for a spec change: a repository at its base commit, and the merge
+/// that changed the spec.
+fn spec_change_case(dir: &Path) {
+    let repo = dir.join("source");
+    std::fs::create_dir_all(repo.join("docs")).unwrap();
+    git(&repo, &["init", "--quiet", "-b", "main"]);
+    git(&repo, &["config", "user.name", "maintainer"]);
+    git(&repo, &["config", "user.email", "maintainer@example.com"]);
+    std::fs::write(repo.join("docs/spec.md"), "# Spec\n").unwrap();
+    git(&repo, &["add", "--all"]);
+    git(&repo, &["commit", "--quiet", "-m", "Start"]);
+    let base = git(&repo, &["rev-parse", "HEAD"]);
+    std::fs::write(repo.join("docs/spec.md"), "# Spec\n\nGadgets exist.\n").unwrap();
+    git(&repo, &["commit", "--quiet", "-am", "Gadgets"]);
+    let merge = git(&repo, &["rev-parse", "HEAD"]);
+    git(&repo, &["update-ref", "refs/heads/linewright-base", &base]);
+    git(
+        &repo,
+        &["update-ref", "refs/heads/linewright-merge", &merge],
+    );
+    let case = dir.join("case");
+    std::fs::create_dir_all(&case).unwrap();
+    let bundle = case.join("repo.bundle");
+    git(
+        &repo,
+        &[
+            "bundle",
+            "create",
+            "--quiet",
+            bundle.to_str().unwrap(),
+            "refs/heads/linewright-base",
+            "refs/heads/linewright-merge",
+        ],
+    );
+    let case_json = Case {
+        repo: "acme/widgets".into(),
+        default_branch: "main".into(),
+        machine_user: Login::new(MACHINE),
+        issue_types: None,
+        update_method: UpdateMethod::Merge,
+        base,
+        event: Event::SpecChange {
+            number: Number(41),
+            title: "Gadgets".into(),
+            body: "Adds gadgets.".into(),
+            author: Login::new("maintainer"),
+            merge_commit: merge,
+            commits: vec![],
+        },
+    };
+    std::fs::write(
+        case.join("case.json"),
+        serde_json::to_string_pretty(&case_json).unwrap(),
+    )
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_replayed_spec_change_leaves_its_tickets_pull_requests_and_session_records_as_files() {
+    let dir = tempfile::tempdir().unwrap();
+    spec_change_case(dir.path());
+    let runtime = Arc::new(ScriptedRuntime::default());
+    runtime.on(WorkKind::Tickets, |call| {
+        assert!(call.spec.prompt.contains("+Gadgets exist."));
+        json(json!({
+            "tickets": [{"id": "a", "title": "Gadgets", "body": "Build gadgets.", "blocked_by": []}],
+            "comment": "One slice."
+        }))
+    });
+    runtime.on(WorkKind::Implement, |call| {
+        commit_in(
+            &call.spec.dir,
+            &[("src/gadgets.txt", "gadget\n")],
+            "Gadgets",
+        );
+        json(json!({"outcome": "done", "pr_body": "Adds gadgets."}))
+    });
+    let out = dir.path().join("out");
+
+    replay(
+        &dir.path().join("case"),
+        &out,
+        runtime,
+        Arc::new(FakeClock::new()),
+        config(&out),
+    )
+    .await
+    .unwrap();
+
+    let read = |path: &str| std::fs::read_to_string(out.join(path)).unwrap();
+    assert!(read("issues/2.md").starts_with("# #2 Spec change: Gadgets"));
+    assert!(read("issues/3.md").contains("- Labels: ready-for-agent"));
+    let pull = read("pulls/4.md");
+    assert!(pull.contains("- State: ready for review"), "{pull}");
+    assert!(read("pulls/4.diff").contains("+gadget"));
+    let sessions: Vec<_> = std::fs::read_dir(out.join("sessions/pr-1"))
+        .unwrap()
+        .collect();
+    let session = sessions[0].as_ref().unwrap().path();
+    for file in ["brief.md", "result.json", "trace.jsonl"] {
+        assert!(
+            session.join(file).exists(),
+            "{file} in {}",
+            session.display()
+        );
+    }
+    assert!(out.join("sessions/issue-3").is_dir());
+}

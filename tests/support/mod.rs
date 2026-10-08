@@ -1,0 +1,280 @@
+//! Fakes of the external systems for the end-to-end tests: the local store
+//! stands in for GitHub, a scripted runtime for the agents, and a clock that
+//! ticks a second per reading.
+
+#![allow(dead_code)]
+
+use std::collections::HashMap;
+use std::path::Path;
+use std::process::Command;
+use std::sync::{Arc, Mutex};
+
+use async_trait::async_trait;
+use chrono::{DateTime, TimeDelta, Utc};
+use linewright::briefs::Briefs;
+use linewright::clock::Clock;
+use linewright::domain::{Issue, Login, Number, Timestamp, UpdateMethod};
+use linewright::factory::{Factory, FactoryConfig};
+use linewright::reconcile::WorkKind;
+use linewright::runtime::{Runtime, SessionError, SessionSpec, Turn};
+use linewright::spec_glob::SpecGlob;
+use linewright::store::local::{LocalStore, Seed};
+use serde_json::Value;
+
+pub const MACHINE: &str = "factory";
+
+pub struct FakeClock {
+    now: Mutex<Timestamp>,
+}
+
+impl FakeClock {
+    pub fn new() -> FakeClock {
+        FakeClock {
+            now: Mutex::new(
+                DateTime::parse_from_rfc3339("2026-10-01T12:00:00Z")
+                    .unwrap()
+                    .with_timezone(&Utc),
+            ),
+        }
+    }
+
+    pub fn advance(&self, by: TimeDelta) {
+        *self.now.lock().unwrap() += by;
+    }
+}
+
+impl Clock for FakeClock {
+    fn now(&self) -> Timestamp {
+        let mut now = self.now.lock().unwrap();
+        *now += TimeDelta::seconds(1);
+        *now
+    }
+}
+
+/// One turn of a scripted session: the session's spec and, when resumed, the
+/// follow-up prompt.
+pub struct Call<'a> {
+    pub spec: &'a SessionSpec,
+    pub followup: Option<&'a str>,
+}
+
+type Script = Arc<dyn Fn(&Call) -> Result<String, SessionError> + Send + Sync>;
+
+/// An agent runtime whose sessions run a script per kind of work.
+#[derive(Default)]
+pub struct ScriptedRuntime {
+    scripts: Mutex<HashMap<WorkKind, Script>>,
+    prompts: Mutex<Vec<(WorkKind, String)>>,
+}
+
+impl ScriptedRuntime {
+    pub fn on(
+        &self,
+        kind: WorkKind,
+        script: impl Fn(&Call) -> Result<String, SessionError> + Send + Sync + 'static,
+    ) {
+        self.scripts.lock().unwrap().insert(kind, Arc::new(script));
+    }
+
+    /// Every prompt sessions of `kind` were given, follow-ups included.
+    pub fn prompts(&self, kind: WorkKind) -> Vec<String> {
+        self.prompts
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(k, _)| *k == kind)
+            .map(|(_, p)| p.clone())
+            .collect()
+    }
+
+    fn turn(&self, spec: &SessionSpec, followup: Option<&str>) -> Result<Turn, SessionError> {
+        self.prompts
+            .lock()
+            .unwrap()
+            .push((spec.kind, followup.unwrap_or(&spec.prompt).to_string()));
+        std::fs::write(spec.record.join("trace.jsonl"), "{\"type\":\"scripted\"}\n").unwrap();
+        let script = self.scripts.lock().unwrap().get(&spec.kind).cloned();
+        let script = script.ok_or_else(|| SessionError::Failed {
+            reason: format!("no script for {:?}", spec.kind),
+            log_tail: String::new(),
+        })?;
+        Ok(Turn {
+            session: format!("session-{:?}", spec.kind),
+            message: script(&Call { spec, followup })?,
+            log_tail: String::new(),
+        })
+    }
+}
+
+#[async_trait]
+impl Runtime for ScriptedRuntime {
+    async fn start(&self, spec: &SessionSpec) -> Result<Turn, SessionError> {
+        self.turn(spec, None)
+    }
+
+    async fn resume(
+        &self,
+        spec: &SessionSpec,
+        _session: &str,
+        prompt: &str,
+    ) -> Result<Turn, SessionError> {
+        self.turn(spec, Some(prompt))
+    }
+}
+
+/// Writes `files` in the session's clone and commits them, as an agent would.
+pub fn commit_in(dir: &Path, files: &[(&str, &str)], message: &str) {
+    for (path, contents) in files {
+        let path = dir.join(path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    }
+    for args in [
+        vec!["add", "--all"],
+        vec!["commit", "--quiet", "-m", message],
+    ] {
+        let output = Command::new("git")
+            .args(&args)
+            .current_dir(dir)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "git {args:?} failed: {}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+pub fn json(value: Value) -> Result<String, SessionError> {
+    Ok(value.to_string())
+}
+
+pub struct World {
+    pub store: Arc<LocalStore>,
+    pub runtime: Arc<ScriptedRuntime>,
+    pub clock: Arc<FakeClock>,
+    pub factory: Factory,
+    pub dir: tempfile::TempDir,
+}
+
+pub fn config(work_dir: &Path) -> FactoryConfig {
+    FactoryConfig {
+        spec_glob: SpecGlob::default(),
+        spec_lookback: TimeDelta::days(7),
+        max_workers: 4,
+        ci_grace: TimeDelta::minutes(5),
+        ci_timeout: TimeDelta::hours(6),
+        ci_attempts: 2,
+        result_retries: 1,
+        session_timeout: std::time::Duration::from_secs(30 * 60),
+        update_method: None,
+        briefs: Briefs::shipped(),
+        work_dir: work_dir.to_path_buf(),
+    }
+}
+
+impl World {
+    pub async fn new() -> World {
+        World::with(|_| {}).await
+    }
+
+    pub async fn with(adjust: impl FnOnce(&mut FactoryConfig)) -> World {
+        let dir = tempfile::tempdir().unwrap();
+        let clock = Arc::new(FakeClock::new());
+        let store = Arc::new(
+            LocalStore::create(
+                &dir.path().join("store"),
+                Seed {
+                    default_branch: "main".into(),
+                    machine_user: Login::new(MACHINE),
+                    issue_types: None,
+                    update_method: UpdateMethod::Merge,
+                },
+                clock.clone(),
+            )
+            .await
+            .unwrap(),
+        );
+        store
+            .commit(
+                "maintainer",
+                "main",
+                &[
+                    ("README.md", "# Widgets\n"),
+                    ("docs/spec.md", "# Spec\n\nWidgets exist.\n"),
+                    ("src/widgets.txt", "widget\n"),
+                ],
+                "Start",
+            )
+            .await
+            .unwrap();
+        let runtime = Arc::new(ScriptedRuntime::default());
+        let mut config = config(&dir.path().join("work"));
+        adjust(&mut config);
+        let factory = Factory::start(store.clone(), runtime.clone(), clock.clone(), config)
+            .await
+            .unwrap();
+        World {
+            store,
+            runtime,
+            clock,
+            factory,
+            dir,
+        }
+    }
+
+    /// One poll, and every run it started run to its end.
+    pub async fn poll(&mut self) {
+        self.factory.cycle().await.unwrap();
+        self.factory.settle().await;
+    }
+
+    pub fn issue(&self, number: Number) -> Issue {
+        self.store.issue(number).unwrap()
+    }
+}
+
+pub fn labels(issue: &Issue) -> Vec<&str> {
+    let mut labels: Vec<&str> = issue.labels.iter().map(String::as_str).collect();
+    labels.sort();
+    labels
+}
+
+pub fn last_comment(issue: &Issue) -> &str {
+    &issue.comments.last().expect("the issue has a comment").body
+}
+
+/// A file name unique to the session's subject, such as `issue-3`.
+pub fn subject_file(call: &Call) -> String {
+    match call.spec.subject {
+        linewright::reconcile::Subject::Issue(n) => format!("issue-{}", n.0),
+        linewright::reconcile::Subject::SpecChange(n) => format!("pr-{}", n.0),
+    }
+}
+
+impl World {
+    /// A ticket for the factory and the draft pull request it implemented.
+    pub async fn ticket_in_review(&mut self) -> (Number, Number) {
+        self.runtime.on(WorkKind::Implement, |call| {
+            let file = format!("src/{}.txt", subject_file(call));
+            commit_in(&call.spec.dir, &[(&file, "done\n")], "Do the ticket");
+            json(serde_json::json!({"outcome": "done", "pr_body": "Does it."}))
+        });
+        let ticket = self.store.open_issue(
+            "maintainer",
+            "Do the thing",
+            "Please.",
+            &["ready-for-agent"],
+        );
+        self.store.assign_as(ticket, "maintainer").unwrap();
+        self.poll().await;
+        let pr = *self
+            .store
+            .pulls()
+            .last()
+            .expect("a pull request was opened");
+        (ticket, pr)
+    }
+}
