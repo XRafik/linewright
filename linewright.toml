@@ -1,0 +1,2 @@
+repo = "tibbe/linewright"
+spec-glob = "{docs/specs/**/*.md,GLOSSARY.md}"
