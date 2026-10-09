@@ -131,29 +131,26 @@ it: labels start and stop work, and pull requests show it.
   **claimed** when the machine user is among its assignees, and **in review**
   when an open pull request by the machine user closes it.
 - Startup checks: the token can push to the repository and, with
-  `--auto-merge`, the repository allows the merge method; otherwise Linewright
-  exits with an error.
+  `--auto-merge`, the repository allows the merge method and the update
+  method keeps the branch mergeable with it (`update-branch` `merge` cannot
+  keep a branch rebase-mergeable); otherwise Linewright exits with an error.
 - One Linewright per repository.
 
-The lifecycle of an issue. Labeled states are labels; `claimed` and
-`in review` are derived as above.
+The lifecycle of an issue. `triage` and `work` each group several states,
+drawn under [Triage](#triage) and [Pull requests](#pull-requests);
+`ready-for-agent` and `ready-for-human` are the labels between them.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> needs_triage: reporter files an issue
+    [*] --> triage: reporter files an issue
     [*] --> ready_for_agent: maintainer labels, or Linewright creates a ticket
-    needs_triage --> ready_for_agent: triage, clear and within the spec
-    needs_triage --> needs_info: triage, reporter must answer
-    needs_triage --> ready_for_human: triage, maintainer must decide
-    needs_info --> needs_triage: reporter comments
-    ready_for_human --> ready_for_agent: maintainer answers
-    ready_for_human --> needs_triage: maintainer asks for another triage
-    ready_for_agent --> claimed: unblocked, machine user assigned
-    claimed --> in_review: PR opened and green
-    claimed --> ready_for_human: cannot finish
-    in_review --> claimed: person comments on the PR
-    in_review --> [*]: PR merged, issue closed
-    in_review --> ready_for_human: PR closed unmerged
+    triage --> ready_for_agent: clear and within the spec
+    triage --> ready_for_human: maintainer must decide
+    ready_for_human --> triage: a person comments after triage, or maintainer labels needs-triage
+    ready_for_human --> ready_for_agent: maintainer labels
+    ready_for_agent --> work: unblocked, machine user assigned
+    work --> ready_for_human: cannot finish, or PR closed unmerged
+    work --> [*]: PR merged, issue closed
 ```
 
 ## Sources of work
@@ -187,7 +184,7 @@ stateDiagram-v2
 
 1. As an operator, I want new issues classified and their claims verified, so that only real, clear work reaches an implementer.
 2. As an operator, I want reporters asked for what is missing and their answers picked up, so that I am not the go-between.
-3. As an operator, I want an issue that needs my decision handed to me with a recommendation, so that my part is a decision, not research.
+3. As an operator, I want an issue that needs my decision handed to me with a recommendation and my answer in the thread picked up, so that my part is a decision, not research or bookkeeping.
 4. As an operator, I want duplicates and already-fixed issues flagged rather than closed, so that no reporter is turned away by a machine.
 
 ### Decisions
@@ -204,14 +201,31 @@ stateDiagram-v2
   - `ready-for-human`, with a recommendation: the questions a maintainer must
     answer, or why the issue is not for an agent (duplicate, already
     implemented, needs a spec change, should be rejected).
+
+  Facts come before decisions: while the reporter still owes a fact, the
+  outcome is `needs-info`, asking only for it, even if a maintainer's
+  decision will follow, because the decision usually depends on the facts.
 - The category is the repository's issue type (Bug, Feature, Task) where the
   repository has issue types, and the `bug` or `enhancement` label otherwise.
 - Triage leaves issues open and repository files as they are.
-- `needs-info` is the one state a comment leaves: when anyone other than the
-  machine user comments after Linewright's last triage comment, the issue is
-  triaged again. Every other handoff from person to factory is a label the
-  maintainer sets: a `ready-for-human` issue goes back with `ready-for-agent`
-  (implement as decided) or `needs-triage` (triage again).
+- An answer in the thread is picked up: when anyone other than the machine
+  user comments on a `needs-info` or `ready-for-human` issue after
+  Linewright's last triage comment, and that is its last comment on the
+  issue, the issue is triaged again. The labels say who must answer, the
+  reporter or the maintainer; either may answer by commenting, because that
+  is where the question was asked. The maintainer may also hand an issue back
+  with a label: `ready-for-agent` (implement as decided) or `needs-triage`
+  (triage again).
+
+The `triage` states of the issue lifecycle; both are labels.
+
+```mermaid
+stateDiagram-v2
+    [*] --> needs_triage
+    needs_triage --> needs_info: reporter owes a fact
+    needs_info --> needs_triage: a person comments
+    needs_triage --> [*]: ready-for-agent or ready-for-human
+```
 
 ## Tickets
 
@@ -355,7 +369,7 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
 1. As an operator, I want the PR to be a draft until CI passes, so that I am only asked to review green PRs.
 2. As an operator, I want CI failures fixed by the agent, so that red CI costs me nothing.
 3. As an operator, I want my review comments addressed and answered where I wrote them, so that review is a conversation with the branch.
-4. As an operator, I want branches kept up to date with the default branch the way my repository does it, so that merging is a click.
+4. As an operator, I want branches kept up to date with the default branch and mergeable by every method my repository allows, rewriting history only when they must, so that I pick how to merge and my review is not disturbed.
 5. As an operator, I want to merge myself, so that nothing lands without me.
 6. As an operator, I want closing a PR to mean rejection, so that the factory does not redo what I refused.
 7. As an operator, I want to let Linewright merge its own green PRs, except those my repository requires a person to review, so that only the changes I have reserved for myself wait for me.
@@ -374,8 +388,9 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
   ticket's human assignees.
 - **Auto-merge**: with `--auto-merge`, Linewright merges each green PR the
   machine user opened instead of requesting review, with the `merge-method`
-  setting: by default a rebase where the repository requires linear history
-  and a merge otherwise. This is Linewright merging, not GitHub's auto-merge
+  setting: by default a rebase where the repository requires linear history,
+  and otherwise the first method of merge, squash and rebase that the
+  repository allows. This is Linewright merging, not GitHub's auto-merge
   feature.
   - It merges only when GitHub allows it. A PR GitHub blocks is marked ready
     for review with a comment naming what GitHub requires, and is merged once
@@ -396,11 +411,18 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
   and leaves people's threads for them to resolve. Feedback posted while a run
   works goes to its session before the run pushes.
 - **Keeping up to date**: every run first brings the branch up to date with
-  the default branch, and a PR GitHub reports behind or unmergeable gets a run
-  for that alone, which needs an agent only for a conflict. It updates with
-  the `update-branch` setting: by default a rebase where the repository
-  requires linear history and a merge otherwise. Without auto-merge, the
-  maintainer merges the PR with whatever method the repository allows.
+  the default branch, and a PR GitHub reports behind, unmergeable or (where
+  the repository allows rebase merging) not rebaseable gets a run for that
+  alone, which needs an agent only for a conflict. It updates with the
+  `update-branch` setting. By default the default branch is merged into the
+  branch, so reviewed history stays as it is, except that the branch is
+  rebased onto it where the repository requires linear history, or where it
+  allows rebase merging and the update has a conflict to resolve or GitHub
+  reports the PR not rebaseable: a conflict resolved in a merge commit leaves
+  the branch impossible to rebase-merge. Set explicitly, `merge` never
+  rewrites history, at the cost of rebase merging after a conflict, and
+  `rebase` always rebases. Without auto-merge, the maintainer merges the PR
+  with whatever method the repository allows.
 - Commits a person pushes to the branch are kept: every run starts from the
   branch as it is.
 - A run that changes a PR so its description no longer fits rewrites the
@@ -408,6 +430,19 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
 - A merged PR closes the issue through `Closes #N`; a reopened issue gets a
   fresh run once `ready-for-agent` is applied again. A PR closed without
   merging sends the issue to `ready-for-human`.
+
+The `work` states of the issue lifecycle, derived as under
+[Repository](#repository).
+
+```mermaid
+stateDiagram-v2
+    [*] --> claimed: unblocked, machine user assigned
+    claimed --> in_review: PR opened and green
+    claimed --> [*]: cannot finish, to ready-for-human
+    in_review --> claimed: person comments on the PR
+    in_review --> [*]: PR merged, issue closed
+    in_review --> [*]: PR closed unmerged, to ready-for-human
+```
 
 ## Operation
 
