@@ -384,14 +384,12 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
   to complete (default 6 h, then `ready-for-human` naming the checks still
   running). A failure starts a fix session, at most 2 attempts, then
   `ready-for-human` naming the failing check.
-- Green: the PR is marked ready for review, and review is requested from the
-  ticket's human assignees.
+- Green: the PR is marked ready for review.
 - **Auto-merge**: with `--auto-merge`, Linewright merges each green PR the
-  machine user opened instead of requesting review, with the `merge-method`
-  setting: by default a rebase where the repository requires linear history,
-  and otherwise the first method of merge, squash and rebase that the
-  repository allows. This is Linewright merging, not GitHub's auto-merge
-  feature.
+  machine user opened, with the `merge-method` setting: by default a rebase
+  where the repository requires linear history, and otherwise the first
+  method of merge, squash and rebase that the repository allows. This is
+  Linewright merging, not GitHub's auto-merge feature.
   - It merges only when GitHub allows it. A PR GitHub blocks is marked ready
     for review with a comment naming what GitHub requires, and is merged once
     GitHub allows it.
@@ -404,13 +402,14 @@ trigger fires. Workflows sit beside the pipeline and may hand it work.
     while Linewright ran without it.
 - **Rework**: a comment or review from anyone other than the machine user,
   posted after Linewright's last push, starts a rework run; a review that
-  only approves starts nothing. The run brings the
-  branch up to date, addresses the comments, pushes, replies in each thread
-  and re-requests review. Comments from people are always addressed; those
-  from other bots at the implementer's judgment, and it may answer that a
-  comment needs no change. The implementer resolves the threads bots opened
-  and leaves people's threads for them to resolve. Feedback posted while a run
-  works goes to its session before the run pushes.
+  only approves starts nothing. The run brings the branch up to date,
+  addresses the comments, pushes, replies in each thread and re-requests
+  review from the people whose comments it addressed. Comments from people
+  are always addressed; those from other bots at the implementer's judgment,
+  and it may answer that a comment needs no change. The implementer resolves
+  the threads bots opened and leaves people's threads for them to resolve.
+  Feedback posted while a run works goes to its session before the run
+  pushes.
 - **Keeping up to date**: every run first brings the branch up to date with
   the default branch, and a PR GitHub reports behind, unmergeable or (where
   the repository allows rebase merging) not rebaseable gets a run for that
