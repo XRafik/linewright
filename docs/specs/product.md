@@ -95,6 +95,9 @@ it: labels start and stop work, and pull requests show it.
    that a misconfiguration is loud.
 4. As an operator, I want to start work by applying one label and stop it by
    removing it, so that control needs nothing but GitHub.
+5. As an operator, I want Linewright to start work only on the issues and pull
+   requests I mark for it, so that I can adopt it a little at a time in a
+   repository whose people already use its labels.
 
 ### Decisions
 
@@ -116,8 +119,9 @@ it: labels start and stop work, and pull requests show it.
   the repository apply as in any session. The operator's own Claude Code
   setup does not, and sessions keep no memory of their own: what later
   sessions should know belongs in the repository.
-- Labels. Linewright creates any that are missing at startup and never renames
-  or deletes one. Labels only Linewright uses are prefixed `linewright:`.
+- Labels. Linewright creates any that are missing at startup, except the
+  required label, and never renames or deletes one. Labels only Linewright uses
+  are prefixed `linewright:`.
 
   | label | meaning | set by |
   |---|---|---|
@@ -127,6 +131,7 @@ it: labels start and stop work, and pull requests show it.
   | `ready-for-human` | the maintainer must act or decide | Linewright |
   | `bug`, `enhancement` | category, in repositories without issue types | Linewright (triage), maintainer |
   | `linewright:spec-processed` | this merged PR's spec changes have been ticketed | Linewright |
+  | the required label, named by `require-label` | Linewright may start work on this item | maintainer, Linewright |
 
 - For issues, the human interface is two labels: `needs-triage` asks for
   triage and `ready-for-agent` asks for implementation. Spec changes need no
@@ -134,6 +139,16 @@ it: labels start and stop work, and pull requests show it.
   Removing `ready-for-agent`, unassigning the machine user or closing the
   issue stops its work; after an unassignment, applying `ready-for-agent`
   again restarts it.
+- With `require-label` set, Linewright starts work only on issues and pull
+  requests that carry the **required label**. It checks the label each time
+  it starts something: triaging an issue, also again after a comment;
+  claiming an issue, also again after an unassignment or a reopening; and
+  cutting a spec change into tickets, also again after a handback. Work
+  already started carries on without it, so removing the label stops
+  nothing in flight and only keeps Linewright from starting more. Linewright
+  puts the label on every issue and pull request it creates. Workflows run
+  on their schedule either way. Unset, every issue and pull request is
+  Linewright's to work.
 - Machine state is derived from GitHub, never labeled. An issue is
   **claimed** when the machine user is among its assignees, and **in review**
   when an open pull request by the machine user closes it.
@@ -180,10 +195,11 @@ stateDiagram-v2
 - The spec is the tracked files matching the spec glob.
 - A **spec change** is a pull request that was merged into the default
   branch, touched at least one spec file, was merged within the lookback
-  window (default 7 days) and has no `linewright:spec-processed` label. PRs
-  authored by the machine user are skipped. The spec as merged is what gets
-  built; a push straight to the default branch is the maintainer's own
-  change, outside the factory.
+  window (default 7 days), has no `linewright:spec-processed` label and,
+  with `require-label` set, carries the required label, applied before or
+  after the merge. PRs authored by the machine user are skipped. The spec as
+  merged is what gets built; a push straight to the default branch is the
+  maintainer's own change, outside the factory.
 - Issues enter in two ways: with `needs-triage`, which asks for triage, and
   with `ready-for-agent`, which asks for implementation once the issue is
   unclaimed and unblocked.
@@ -538,6 +554,7 @@ stateDiagram-v2
   | `update-branch` (`rebase`, `merge`) | from the repository's settings |
   | `auto-merge` | off |
   | `merge-method` (`merge`, `squash`, `rebase`) | from the repository's settings |
+  | `require-label` | none: every issue and pull request |
   | `log-format` (`text`, `json`) | `text` on a terminal, `json` otherwise |
 
 - Linewright runs wherever `git`, `bash`, the agent runtime and the project's
@@ -630,8 +647,6 @@ Direction, not the first version:
 - One session for a whole spec change. Tickets exist to keep each session in
   its smart zone; as that zone grows, a spec change may need no cutting.
 - One container per run, instead of agents as processes beside the manager.
-- Starting spec processing from a label on the PR instead of from any merged
-  spec PR, for repositories shared with people who don't want the factory.
 - Per-repository overrides of the agents' briefs.
 - Other workflow triggers, such as a merged pull request touching certain
   paths.
