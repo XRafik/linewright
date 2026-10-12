@@ -1,3 +1,5 @@
 /target
 .env
 /docs/research/
+/deploy/*compose.override.y*ml
+CLAUDE.local.md

@@ -1,0 +1,41 @@
+name: linewright
+
+services:
+  runtime:
+    build:
+      context: ..
+      target: runtime
+    image: linewright:runtime
+    scale: 0
+  base:
+    build: ..
+    image: linewright:base
+    scale: 0
+
+  linewright:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      additional_contexts:
+        runtime: service:runtime
+        base: service:base
+    image: linewright:self
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      LINEWRIGHT_WORK_DIR: /data
+      CLAUDE_CONFIG_DIR: /home/linewright/.claude
+    logging:
+      driver: json-file
+      options: {max-size: 50m, max-file: "3"}
+    volumes:
+      - data:/data
+      - cargo-registry:/usr/local/cargo/registry
+      - rustup:/usr/local/rustup
+      - claude-config:/home/linewright/.claude
+
+volumes:
+  data:
+  cargo-registry:
+  rustup:
+  claude-config:
