@@ -12,6 +12,24 @@ services:
     image: linewright:base
     scale: 0
 
+  proxy:
+    build:
+      # Built from source, as the image Stripe publishes,
+      # ghcr.io/stripe/smokescreen, is not public.
+      dockerfile_inline: |
+        FROM golang:1.26-alpine AS build
+        ARG SMOKESCREEN_VERSION=v0.1.0
+        RUN CGO_ENABLED=0 go install github.com/stripe/smokescreen@$${SMOKESCREEN_VERSION}
+        FROM gcr.io/distroless/static:nonroot
+        COPY --from=build /go/bin/smokescreen /smokescreen
+        ENTRYPOINT ["/smokescreen"]
+    image: linewright:proxy
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    networks: [fenced, default]
+
   linewright:
     build:
       context: ..
@@ -25,6 +43,17 @@ services:
     environment:
       LINEWRIGHT_WORK_DIR: /data
       CLAUDE_CONFIG_DIR: /home/linewright/.claude
+      XDG_CACHE_HOME: /tmp/cache
+      http_proxy: http://proxy:4750
+      https_proxy: http://proxy:4750
+      no_proxy: localhost,127.0.0.1
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      # Executable: the agents' builds and tests run files they write there.
+      - /tmp:exec,size=1g
+    pids_limit: 1024
     logging:
       driver: json-file
       options: {max-size: 50m, max-file: "3"}
@@ -33,6 +62,15 @@ services:
       - cargo-registry:/usr/local/cargo/registry
       - rustup:/usr/local/rustup
       - claude-config:/home/linewright/.claude
+    depends_on: [proxy]
+    networks: [fenced]
+
+networks:
+  fenced:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+      com.docker.network.bridge.gateway_mode_ipv6: isolated
 
 volumes:
   data:
