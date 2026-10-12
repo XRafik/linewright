@@ -1,26 +1,48 @@
-# The base image Linewright publishes: linewright, git and the agent runtime.
-# Build your own image FROM it with your project's toolchain added, so the
-# agents can build and test your code (docs/specs/product.md, "Operation").
+# syntax=docker/dockerfile:1
 
-FROM rust:1-bookworm AS build
+ARG DEBIAN_RELEASE=trixie
+
+FROM rust:1-slim-${DEBIAN_RELEASE} AS build
 WORKDIR /src
-COPY . .
-# Installs the toolchain rust-toolchain.toml pins.
-RUN rustup toolchain install && cargo build --release --locked
+COPY rust-toolchain.toml ./
+RUN rustup toolchain install
+RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=bind,source=src,target=src \
+    --mount=type=bind,source=briefs,target=briefs \
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target,sharing=locked \
+    cargo build --release --locked \
+    && cp target/release/linewright /usr/local/bin/linewright
 
-FROM node:22-bookworm-slim
+FROM debian:${DEBIAN_RELEASE}-slim AS runtime
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates tini \
+    && apt-get install -y --no-install-recommends bash ca-certificates git tini \
     && rm -rf /var/lib/apt/lists/*
-RUN npm install --global @anthropic-ai/claude-code
-COPY --from=build /src/target/release/linewright /usr/local/bin/linewright
-# Agents run without permission prompts; the container is the isolation, and
-# they run as an ordinary user inside it.
-RUN useradd --create-home linewright
+ADD --checksum=sha256:bd70a5e4a268002704024ceba7f8446024114e94f3f0bdd11c23a9e592be81c6 \
+    https://downloads.claude.ai/keys/claude-code.asc /etc/apt/keyrings/claude-code.asc
+ARG CLAUDE_CODE_VERSION=2.1.287
+RUN <<EOF
+set -eu
+chmod 644 /etc/apt/keyrings/claude-code.asc
+echo "deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main" \
+  > /etc/apt/sources.list.d/claude-code.list
+apt-get update
+apt-get install -y --no-install-recommends "claude-code=${CLAUDE_CODE_VERSION}-1"
+rm -rf /var/lib/apt/lists/*
+EOF
+ENV DISABLE_AUTOUPDATER=1
+ARG LINEWRIGHT_UID=1000 LINEWRIGHT_GID=1000
+RUN (getent group "$LINEWRIGHT_GID" >/dev/null || groupadd --gid "$LINEWRIGHT_GID" linewright) \
+    && useradd --uid "$LINEWRIGHT_UID" --gid "$LINEWRIGHT_GID" \
+        --create-home --shell /bin/bash linewright
 USER linewright
 WORKDIR /home/linewright
-# tini runs as PID 1: it passes signals on to linewright and reaps the
-# processes left behind when an agent session is killed
-# (<https://github.com/krallin/tini>).
 ENTRYPOINT ["tini", "--", "linewright"]
 CMD ["serve"]
+
+FROM runtime AS base
+COPY --link --from=build /usr/local/bin/linewright /usr/local/bin/linewright
+LABEL org.opencontainers.image.source="https://github.com/tibbe/linewright" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.description="Linewright, git, and Claude Code"
