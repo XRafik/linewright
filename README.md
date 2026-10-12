@@ -38,4 +38,4 @@ linewright --repo owner/name serve
   project's toolchain added. It runs as the user `linewright`, uid and gid
   1000; to give a work directory on the host another owner, build it with the
   `LINEWRIGHT_UID` and `LINEWRIGHT_GID` build arguments. `deploy/` runs
-  Linewright on itself in a container.
+  Linewright on itself in a locked-down container.

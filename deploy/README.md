@@ -1,7 +1,14 @@
 # Running Linewright on itself
 
-`compose.yaml` runs Linewright on this repository in Docker. Run the commands
-here from `deploy/`; to run it on another machine, point Docker at it with a
+`compose.yaml` runs Linewright on this repository in Docker, locked down:
+agents reach the network only through
+[Smokescreen](https://github.com/stripe/smokescreen), a proxy that refuses
+private addresses, so they get the public internet but not the host, the LAN,
+or other containers. Tools that ignore `https_proxy`, or use SSH, cannot
+connect.
+
+Run the commands here from `deploy/`; to run it on another machine, point
+Docker at it with a
 [context](https://docs.docker.com/engine/manage-resources/contexts/), and the
 image is built there.
 
@@ -60,3 +67,5 @@ With Docker on another machine, pass its context to each command:
   docker compose exec linewright bash -c \
     'ls -td /data/tibbe/linewright/sessions/issue-3/* | head -1'
   ```
+
+- What the proxy refused: `docker compose logs proxy | grep '"allow":false'`.
