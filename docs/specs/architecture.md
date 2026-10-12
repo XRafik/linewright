@@ -19,7 +19,8 @@ later.
   model is configuration. Sessions are isolated: those running at once
   cannot disturb each other, and what a session does depends on its brief,
   the repository and what it reads during the session, never on what an
-  earlier session left behind or on the host's user-level setup.
+  earlier session left behind or on the host's user-level setup. Isolation
+  is of what sessions can observe of each other, not of where they run.
 - **The brief and the result are the protocol between the manager and an
   agent.** The manager puts what a session needs from the store (issue,
   comments, spec diff, PR comments) into its brief. The protocol is how the
