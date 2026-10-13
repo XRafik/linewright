@@ -82,7 +82,7 @@ impl Served {
 
 fn claimed(store: &LocalStore, issue: Number) -> bool {
     let issue = store.issue(issue).unwrap();
-    issue.assignees.contains(&Login::new(MACHINE))
+    issue.assignees.contains(&Login::new(LINEWRIGHT))
 }
 
 #[tokio::test]
