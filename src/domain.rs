@@ -129,6 +129,14 @@ pub enum IssueEvent {
         label: String,
         at: Timestamp,
     },
+    #[serde(untagged)]
+    Assignment(Assignment),
+}
+
+/// A change to an item's assignees.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "event", rename_all = "kebab-case")]
+pub enum Assignment {
     Assigned {
         assignee: Login,
         at: Timestamp,
@@ -138,6 +146,16 @@ pub enum IssueEvent {
         actor: Login,
         at: Timestamp,
     },
+}
+
+impl Assignment {
+    pub fn assignee(&self) -> &Login {
+        match self {
+            Assignment::Assigned { assignee, .. } | Assignment::Unassigned { assignee, .. } => {
+                assignee
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -420,20 +438,6 @@ pub struct Push {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LabelEvent {
-    pub label: String,
-    pub change: LabelChange,
-    pub at: Timestamp,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LabelChange {
-    Applied,
-    Removed,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pull {
     pub number: Number,
     pub title: String,
@@ -453,8 +457,9 @@ pub struct Pull {
     pub reviews: Vec<Review>,
     pub threads: Vec<Thread>,
     pub labels: Vec<String>,
+    pub assignees: Vec<Login>,
     /// Oldest first.
-    pub label_events: Vec<LabelEvent>,
+    pub assignments: Vec<Assignment>,
 }
 
 impl Pull {
@@ -464,6 +469,10 @@ impl Pull {
 
     pub fn has_label(&self, label: &str) -> bool {
         self.labels.iter().any(|l| l == label)
+    }
+
+    pub fn is_assigned(&self, login: &Login) -> bool {
+        self.assignees.contains(login)
     }
 }
 
