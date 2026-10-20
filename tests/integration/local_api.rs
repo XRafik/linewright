@@ -1012,7 +1012,7 @@ fn gathered(
     gathered
 }
 
-fn turn_1() -> Vec<String> {
+pub(crate) fn turn_1() -> Vec<String> {
     include_str!("fixtures/transcript/turn-1.jsonl")
         .lines()
         .map(|line| format!("{line}\n"))
