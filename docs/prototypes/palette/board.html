@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+const q = new URLSearchParams(location.search);
+document.documentElement.dataset.theme = q.get("theme") || "light";
+for (const k of ["status", "surfaces"]) document.documentElement.dataset[k] = q.get(k) || {status: "daisyui", surfaces: "lifted"}[k];
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title id="title">(1) Board · tibbe/linewright</title>
+<link rel="stylesheet" href="../../../assets/linewright.css"><link rel="stylesheet" href="palette.css">
+</head>
+<body class="bg-base-100 text-base-content"  hx-swap="none"><div class="drawer lg:drawer-open">
+<input id="navigation" type="checkbox" class="drawer-toggle">
+<div class="drawer-content isolate min-w-0 flex h-dvh flex-col">
+<label for="navigation" class="btn btn-ghost btn-square drawer-button m-2 shrink-0 lg:hidden" aria-label="Open the navigation">
+<svg class="size-5" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>
+</label>
+<div id="holds" class="flex shrink-0 flex-col gap-2 empty:hidden px-4 pt-2">
+</div>
+<p id="lost" class="alert alert-warning mx-4 mt-2 shrink-0" role="status" hidden>Lost <code>serve</code> <time tabindex="0"></time>; reconnecting.</p>
+<main class="flex min-h-0 flex-1 flex-col px-2 py-4">
+<div id="parts"><div class="surface rounded-box"><h4>On the Page</h4>
+<div class="row"><button class="btn btn-sm">Button</button><button class="btn btn-sm btn-primary">Primary</button><input class="input input-sm w-auto" value="input"><select class="select select-sm w-auto"><option>select</option></select></div>
+<div class="row"><span class="badge badge-error">failed</span><span class="badge badge-warning">waiting</span><span class="badge badge-info">in flight</span><span class="badge badge-success">done</span><span class="badge badge-neutral">cancelled</span><code>code</code></div>
+<div class="row"><div role="alert" class="alert">usage limit (plain alert)</div><div role="alert" class="alert alert-warning">drain</div></div>
+<div class="row"><table class="table table-pin-rows w-auto"><thead><tr><th>Run</th><th>Outcome</th></tr></thead><tbody><tr><td>#12</td><td>merged</td></tr></tbody></table>
+<ul class="menu w-auto p-0"><li><a aria-current="page">Board (current)</a></li><li><a>Runs</a></li></ul>
+<span class="tooltip tooltip-open tooltip-top mt-8" data-tip="a tooltip">hover</span></div>
+</div><div class="surface rounded-box border border-base-300 bg-base-200"><h4>On a Lane</h4>
+<div class="row"><button class="btn btn-sm">Button</button><button class="btn btn-sm btn-primary">Primary</button><input class="input input-sm w-auto" value="input"><select class="select select-sm w-auto"><option>select</option></select></div>
+<div class="row"><span class="badge badge-error">failed</span><span class="badge badge-warning">waiting</span><span class="badge badge-info">in flight</span><span class="badge badge-success">done</span><span class="badge badge-neutral">cancelled</span><code>code</code></div>
+<div class="row"><div role="alert" class="alert">usage limit (plain alert)</div><div role="alert" class="alert alert-warning">drain</div></div>
+<div class="row"><table class="table table-pin-rows w-auto"><thead><tr><th>Run</th><th>Outcome</th></tr></thead><tbody><tr><td>#12</td><td>merged</td></tr></tbody></table>
+<ul class="menu w-auto p-0"><li><a aria-current="page">Board (current)</a></li><li><a>Runs</a></li></ul>
+<span class="tooltip tooltip-open tooltip-top mt-8" data-tip="a tooltip">hover</span></div>
+</div><div class="surface rounded-box border border-base-300 bg-card shadow-sm"><h4>On a Card</h4>
+<div class="row"><button class="btn btn-sm">Button</button><button class="btn btn-sm btn-primary">Primary</button><input class="input input-sm w-auto" value="input"><select class="select select-sm w-auto"><option>select</option></select></div>
+<div class="row"><span class="badge badge-error">failed</span><span class="badge badge-warning">waiting</span><span class="badge badge-info">in flight</span><span class="badge badge-success">done</span><span class="badge badge-neutral">cancelled</span><code>code</code></div>
+<div class="row"><div role="alert" class="alert">usage limit (plain alert)</div><div role="alert" class="alert alert-warning">drain</div></div>
+<div class="row"><table class="table table-pin-rows w-auto"><thead><tr><th>Run</th><th>Outcome</th></tr></thead><tbody><tr><td>#12</td><td>merged</td></tr></tbody></table>
+<ul class="menu w-auto p-0"><li><a aria-current="page">Board (current)</a></li><li><a>Runs</a></li></ul>
+<span class="tooltip tooltip-open tooltip-top mt-8" data-tip="a tooltip">hover</span></div>
+</div></div><section id="board" class="scroll-box @container"><div class="board min-w-[calc(6*200px+5*--spacing(2)+2*var(--lane-inset))] [--column-heads:2rem] [--columns:repeat(6,minmax(200px,1fr))] [--lane-head:2.5rem] [--lane-padding:--spacing(2)] [--lane-inset:calc(var(--lane-padding)+1px)]">
+<div class="sticky top-0 z-20 grid h-(--column-heads) grid-cols-(--columns) items-center gap-2 bg-base-100 px-(--lane-inset)">
+<h2 class="column font-semibold">Triage</h2>
+<h2 class="column font-semibold">Needs a person</h2>
+<h2 class="column font-semibold">Ready</h2>
+<h2 class="column font-semibold">Working</h2>
+<h2 class="column font-semibold">In review</h2>
+<h2 class="column font-semibold">Done</h2>
+</div>
+<section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)"><h2 class="lane-head toned [--tone:var(--color-error)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top">#9001: Sample statuses (prototype, not live data) — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M5.75 5.75l4.5 4.5M10.25 5.75l-4.5 4.5"/></svg>#9006 · checks failed</span></h2><div class="grid grid-cols-(--columns) gap-2"><ul class="cell flex flex-col gap-2" aria-label="Triage"></ul><ul class="cell flex flex-col gap-2" aria-label="Needs a person"><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-warning)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9002: Ask about the release note</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75" stroke-dasharray="2.5 2"/></svg>asked tibbe · 1h</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="Ready"></ul><ul class="cell flex flex-col gap-2" aria-label="Working"><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-neutral)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9003: Bump the toolchain</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M6.5 5.5v5M9.5 5.5v5"/></svg>queued</p>
+</div>
+</li><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-neutral)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9004: Rework the runs table</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M6.5 5.5v5M9.5 5.5v5"/></svg>paused for the usage limit</p>
+</div>
+</li><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9005: Pin the prompts</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>implementation · 12m</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="In review"><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-error)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9006: Redact header values</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M5.75 5.75l4.5 4.5M10.25 5.75l-4.5 4.5"/></svg>checks failed</p>
+</div>
+</li><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9007: Tidy the glossary</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>checks running</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="Done"><li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9008: Release 0.6.0</h3>
+<p class="line text-base-content/70">merged · 2026-10-26 08:00 UTC</p>
+</div>
+</li></ul></div></section><section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)"><h2 class="lane-head toned [--tone:var(--color-neutral)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top">#9010: Sample lane, paused or queued at most (prototype) — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M6.5 5.5v5M9.5 5.5v5"/></svg>#9011 · queued</span></h2><div class="grid grid-cols-(--columns) gap-2"><ul class="cell flex flex-col gap-2" aria-label="Triage"></ul><ul class="cell flex flex-col gap-2" aria-label="Needs a person"></ul><ul class="cell flex flex-col gap-2" aria-label="Ready"><li class="card card-sm border border-base-300 bg-card shadow-sm">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9012: Show the repository's avatar</h3>
+<p class="line text-base-content/70">blocked by #9011</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="Working"><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-neutral)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9011: Read briefs from the default branch</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><path d="M6.5 5.5v5M9.5 5.5v5"/></svg>queued</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="In review"></ul><ul class="cell flex flex-col gap-2" aria-label="Done"></ul></div></section><section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)"><h2 class="lane-head toned [--tone:var(--color-info)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top">#9020: Sample lane, in flight at most (prototype) — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>#9021 · update · 3m</span></h2><div class="grid grid-cols-(--columns) gap-2"><ul class="cell flex flex-col gap-2" aria-label="Triage"></ul><ul class="cell flex flex-col gap-2" aria-label="Needs a person"></ul><ul class="cell flex flex-col gap-2" aria-label="Ready"></ul><ul class="cell flex flex-col gap-2" aria-label="Working"><li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm">#9021: Record each session's model</h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>update · 3m</p>
+</div>
+</li></ul><ul class="cell flex flex-col gap-2" aria-label="In review"></ul><ul class="cell flex flex-col gap-2" aria-label="Done"></ul></div></section><section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-626">
+<h2 class="lane-head toned [--tone:var(--color-info)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/626">#626: Spec change: Spec settings per stage and briefs from the repository</a><a class="github" href="https://github.com/tibbe/linewright/issues/626" aria-label="#626 on GitHub" data-tip="#626 on GitHub"></a> — 4/6 tickets closed — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>#630 · implementation · <time data-since="2026-10-26T21:37:55Z">24m 1s</time></span></h2><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+<li class="card card-sm border border-base-300 bg-card shadow-sm">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/632">#632: Show a repository file Linewright cannot use on `status` and the server page</a><a class="github" href="https://github.com/tibbe/linewright/issues/632" aria-label="#632 on GitHub" data-tip="#632 on GitHub"></a></h3>
+<p class="line text-base-content/70">blocked by <a class="link link-hover" href="/items/630">#630</a><a class="github" href="https://github.com/tibbe/linewright/issues/630" aria-label="#630 on GitHub" data-tip="#630 on GitHub"></a> · <time datetime="2026-10-26T20:30:39Z" tabindex="0">2026-10-26 20:30:39 UTC</time></p>
+</div>
+</li>
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+<li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/630">#630: Read the repository&#39;s config and briefs from its default branch, and hold the runs a broken file would read</a><a class="github" href="https://github.com/tibbe/linewright/issues/630" aria-label="#630 on GitHub" data-tip="#630 on GitHub"></a></h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>implementation · <time data-since="2026-10-26T21:37:55Z">24m 1s</time></p>
+</div>
+</li>
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/627">#627: Resolve what each run works from when it starts, from layers</a><a class="github" href="https://github.com/tibbe/linewright/issues/627" aria-label="#627 on GitHub" data-tip="#627 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/635">#635</a><a class="github" href="https://github.com/tibbe/linewright/issues/635" aria-label="#635 on GitHub" data-tip="#635 on GitHub"></a> · <time datetime="2026-10-26T20:51:02Z" tabindex="0">2026-10-26 20:51:02 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/628">#628: Stage settings: model, effort, session-timeout and session-env per stage</a><a class="github" href="https://github.com/tibbe/linewright/issues/628" aria-label="#628 on GitHub" data-tip="#628 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/637">#637</a><a class="github" href="https://github.com/tibbe/linewright/issues/637" aria-label="#637 on GitHub" data-tip="#637 on GitHub"></a> · <time datetime="2026-10-26T21:31:52Z" tabindex="0">2026-10-26 21:31:52 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/629">#629: Brief layers over the shipped briefs, and the result contract in `{{output}}`</a><a class="github" href="https://github.com/tibbe/linewright/issues/629" aria-label="#629 on GitHub" data-tip="#629 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/636">#636</a><a class="github" href="https://github.com/tibbe/linewright/issues/636" aria-label="#636 on GitHub" data-tip="#636 on GitHub"></a> · <time datetime="2026-10-26T21:37:48Z" tabindex="0">2026-10-26 21:37:48 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/631">#631: Record and show each session&#39;s model, effort and the layer of each setting and brief file</a><a class="github" href="https://github.com/tibbe/linewright/issues/631" aria-label="#631 on GitHub" data-tip="#631 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/644">#644</a><a class="github" href="https://github.com/tibbe/linewright/issues/644" aria-label="#644 on GitHub" data-tip="#644 on GitHub"></a> · <time datetime="2026-10-26T21:56:40Z" tabindex="0">2026-10-26 21:56:40 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</section>
+<section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-639">
+<h2 class="lane-head toned [--tone:var(--color-info)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/639">#639: Spec change: Spec the board&#39;s card statuses and Linewright&#39;s own themes</a><a class="github" href="https://github.com/tibbe/linewright/issues/639" aria-label="#639 on GitHub" data-tip="#639 on GitHub"></a> — 1/2 tickets closed — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>#641 · <a class="link link-hover" href="/items/646">#646</a><a class="github" href="https://github.com/tibbe/linewright/issues/646" aria-label="#646 on GitHub" data-tip="#646 on GitHub"></a> · update · <time data-since="2026-10-26T21:58:50Z">3m 5s</time></span></h2><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+<li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/641">#641: Show each card&#39;s card status and each lane&#39;s most pressing one on the board</a><a class="github" href="https://github.com/tibbe/linewright/issues/641" aria-label="#641 on GitHub" data-tip="#641 on GitHub"></a></h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg><a class="link link-hover" href="/items/646">#646</a><a class="github" href="https://github.com/tibbe/linewright/issues/646" aria-label="#646 on GitHub" data-tip="#646 on GitHub"></a> · update · <time data-since="2026-10-26T21:58:50Z">3m 5s</time></p>
+</div>
+</li>
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/640">#640: Give the web UI its own light and dark themes, and show in flight in info</a><a class="github" href="https://github.com/tibbe/linewright/issues/640" aria-label="#640 on GitHub" data-tip="#640 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/643">#643</a><a class="github" href="https://github.com/tibbe/linewright/issues/643" aria-label="#643 on GitHub" data-tip="#643 on GitHub"></a> · <time datetime="2026-10-26T21:45:03Z" tabindex="0">2026-10-26 21:45:03 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</section>
+<section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-645">
+<h2 class="lane-head toned [--tone:var(--color-info)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/645">#645: Spec prompts in layers and the model a session ran</a><a class="github" href="https://github.com/tibbe/linewright/issues/645" aria-label="#645 on GitHub" data-tip="#645 on GitHub"></a> — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>#645 · design · <time data-since="2026-10-26T21:57:12Z">4m 44s</time></span></h2><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+<li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-info)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><svg class="pull-request size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="pull request" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="4" cy="3.5" r="1.75"/><circle cx="4" cy="12.5" r="1.75"/><circle cx="12" cy="12.5" r="1.75"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/>
+</svg><a class="link link-hover" href="/items/645">#645: Spec prompts in layers and the model a session ran</a><a class="github" href="https://github.com/tibbe/linewright/issues/645" aria-label="#645 on GitHub" data-tip="#645 on GitHub"></a></h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>design · <time data-since="2026-10-26T21:57:12Z">4m 44s</time></p>
+</div>
+</li>
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+</ul>
+</div>
+</section>
+<section class="lane mt-3 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-642">
+<h2 class="lane-head toned [--tone:var(--color-warning)]"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/642">#642: Paused or queued in `neutral` barely shows on the dark theme&#39;s cards and lanes</a><a class="github" href="https://github.com/tibbe/linewright/issues/642" aria-label="#642 on GitHub" data-tip="#642 on GitHub"></a> — <svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75" stroke-dasharray="2.5 2"/></svg>#642 · decision needed · <time datetime="2026-10-26T21:34:39Z" tabindex="0">2026-10-26 21:34:39 UTC</time></span></h2><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+<li class="card card-sm border border-base-300 bg-card shadow-sm toned [--tone:var(--color-warning)]">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/642">#642: Paused or queued in `neutral` barely shows on the dark theme&#39;s cards and lanes</a><a class="github" href="https://github.com/tibbe/linewright/issues/642" aria-label="#642 on GitHub" data-tip="#642 on GitHub"></a></h3>
+<p class="line text-base-content/70"><svg class="icon size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.75" stroke-dasharray="2.5 2"/></svg>decision needed · <time datetime="2026-10-26T21:34:39Z" tabindex="0">2026-10-26 21:34:39 UTC</time></p>
+</div>
+</li>
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+</ul>
+</div>
+</section>
+<details id="finished" class="mt-3 border-t border-base-300 pt-2">
+<summary class="cursor-pointer font-semibold">69 finished lanes</summary>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-633">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/633">#633: Say what happens to a file in a briefs layer that is not one of Linewright&#39;s</a><a class="github" href="https://github.com/tibbe/linewright/issues/633" aria-label="#633 on GitHub" data-tip="#633 on GitHub"></a> — finished <time datetime="2026-10-26T21:57:07Z" tabindex="0">2026-10-26 21:57:07 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/633">#633: Say what happens to a file in a briefs layer that is not one of Linewright&#39;s</a><a class="github" href="https://github.com/tibbe/linewright/issues/633" aria-label="#633 on GitHub" data-tip="#633 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/645">#645</a><a class="github" href="https://github.com/tibbe/linewright/issues/645" aria-label="#645 on GitHub" data-tip="#645 on GitHub"></a> · <time datetime="2026-10-26T21:57:07Z" tabindex="0">2026-10-26 21:57:07 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-634">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/634">#634: Say which model a session&#39;s record shows when none is set</a><a class="github" href="https://github.com/tibbe/linewright/issues/634" aria-label="#634 on GitHub" data-tip="#634 on GitHub"></a> — finished <time datetime="2026-10-26T21:57:07Z" tabindex="0">2026-10-26 21:57:07 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/634">#634: Say which model a session&#39;s record shows when none is set</a><a class="github" href="https://github.com/tibbe/linewright/issues/634" aria-label="#634 on GitHub" data-tip="#634 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-26T21:57:07Z" tabindex="0">2026-10-26 21:57:07 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-622">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/622">#622: Spec change: Spec CA trust and the credentials in header variables</a><a class="github" href="https://github.com/tibbe/linewright/issues/622" aria-label="#622 on GitHub" data-tip="#622 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-26T15:32:07Z" tabindex="0">2026-10-26 15:32:07 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/623">#623: Redact the header values in the harness&#39;s header variables</a><a class="github" href="https://github.com/tibbe/linewright/issues/623" aria-label="#623 on GitHub" data-tip="#623 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/624">#624</a><a class="github" href="https://github.com/tibbe/linewright/issues/624" aria-label="#624 on GitHub" data-tip="#624 on GitHub"></a> · <time datetime="2026-10-26T15:32:07Z" tabindex="0">2026-10-26 15:32:07 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-581">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/581">#581: Say whether `ANTHROPIC_CUSTOM_HEADERS` holds a credential the table passes</a><a class="github" href="https://github.com/tibbe/linewright/issues/581" aria-label="#581 on GitHub" data-tip="#581 on GitHub"></a> — finished <time datetime="2026-10-26T15:06:56Z" tabindex="0">2026-10-26 15:06:56 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/581">#581: Say whether `ANTHROPIC_CUSTOM_HEADERS` holds a credential the table passes</a><a class="github" href="https://github.com/tibbe/linewright/issues/581" aria-label="#581 on GitHub" data-tip="#581 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/621">#621</a><a class="github" href="https://github.com/tibbe/linewright/issues/621" aria-label="#621 on GitHub" data-tip="#621 on GitHub"></a> · <time datetime="2026-10-26T15:06:56Z" tabindex="0">2026-10-26 15:06:56 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-598">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/598">#598: Spec which certificate authorities Linewright trusts when calling GitHub</a><a class="github" href="https://github.com/tibbe/linewright/issues/598" aria-label="#598 on GitHub" data-tip="#598 on GitHub"></a> — finished <time datetime="2026-10-26T15:06:56Z" tabindex="0">2026-10-26 15:06:56 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/598">#598: Spec which certificate authorities Linewright trusts when calling GitHub</a><a class="github" href="https://github.com/tibbe/linewright/issues/598" aria-label="#598 on GitHub" data-tip="#598 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-26T15:06:56Z" tabindex="0">2026-10-26 15:06:56 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-617">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/617">#617: Spec change: Drain on SIGTERM, the signal supervisors send to stop</a><a class="github" href="https://github.com/tibbe/linewright/issues/617" aria-label="#617 on GitHub" data-tip="#617 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-26T14:56:46Z" tabindex="0">2026-10-26 14:56:46 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/618">#618: Drain on SIGTERM and SIGINT, stop on SIGQUIT, and log what the next signal does</a><a class="github" href="https://github.com/tibbe/linewright/issues/618" aria-label="#618 on GitHub" data-tip="#618 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/619">#619</a><a class="github" href="https://github.com/tibbe/linewright/issues/619" aria-label="#619 on GitHub" data-tip="#619 on GitHub"></a> · <time datetime="2026-10-26T14:56:46Z" tabindex="0">2026-10-26 14:56:46 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-614">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/614">#614: Navigation: the repository is its owner&#39;s avatar at every width</a><a class="github" href="https://github.com/tibbe/linewright/issues/614" aria-label="#614 on GitHub" data-tip="#614 on GitHub"></a> — finished <time datetime="2026-10-26T14:23:47Z" tabindex="0">2026-10-26 14:23:47 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/614">#614: Navigation: the repository is its owner&#39;s avatar at every width</a><a class="github" href="https://github.com/tibbe/linewright/issues/614" aria-label="#614 on GitHub" data-tip="#614 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/615">#615</a><a class="github" href="https://github.com/tibbe/linewright/issues/615" aria-label="#615 on GitHub" data-tip="#615 on GitHub"></a> · <time datetime="2026-10-26T14:23:47Z" tabindex="0">2026-10-26 14:23:47 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-615">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/615">#615: Show the repository&#39;s avatar beside its name at every width</a><a class="github" href="https://github.com/tibbe/linewright/issues/615" aria-label="#615 on GitHub" data-tip="#615 on GitHub"></a> — finished <time datetime="2026-10-26T14:23:46Z" tabindex="0">2026-10-26 14:23:46 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><svg class="pull-request size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="pull request" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="4" cy="3.5" r="1.75"/><circle cx="4" cy="12.5" r="1.75"/><circle cx="12" cy="12.5" r="1.75"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/>
+</svg><a class="link link-hover" href="/items/615">#615: Show the repository&#39;s avatar beside its name at every width</a><a class="github" href="https://github.com/tibbe/linewright/issues/615" aria-label="#615 on GitHub" data-tip="#615 on GitHub"></a></h3>
+<p class="line text-base-content/70">merged · nothing to build · <time datetime="2026-10-26T14:23:46Z" tabindex="0">2026-10-26 14:23:46 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-607">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/607">#607: Created PR that use GitHub issue/PR reference syntax link to the wrong repo</a><a class="github" href="https://github.com/tibbe/linewright/issues/607" aria-label="#607 on GitHub" data-tip="#607 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-26T14:23:36Z" tabindex="0">2026-10-26 14:23:36 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/608">#608: Share the prompts&#39; common facts list as a part</a><a class="github" href="https://github.com/tibbe/linewright/issues/608" aria-label="#608 on GitHub" data-tip="#608 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/611">#611</a><a class="github" href="https://github.com/tibbe/linewright/issues/611" aria-label="#611 on GitHub" data-tip="#611 on GitHub"></a> · <time datetime="2026-10-26T08:43:25Z" tabindex="0">2026-10-26 08:43:25 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/609">#609: Name the repository in every prompt and say how to reference other repositories&#39; issues</a><a class="github" href="https://github.com/tibbe/linewright/issues/609" aria-label="#609 on GitHub" data-tip="#609 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/612">#612</a><a class="github" href="https://github.com/tibbe/linewright/issues/612" aria-label="#612 on GitHub" data-tip="#612 on GitHub"></a> · <time datetime="2026-10-26T14:23:36Z" tabindex="0">2026-10-26 14:23:36 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-610">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/610">#610: Repo avatar sometimes doesn&#39;t show</a><a class="github" href="https://github.com/tibbe/linewright/issues/610" aria-label="#610 on GitHub" data-tip="#610 on GitHub"></a> — finished <time datetime="2026-10-26T10:04:05Z" tabindex="0">2026-10-26 10:04:05 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/610">#610: Repo avatar sometimes doesn&#39;t show</a><a class="github" href="https://github.com/tibbe/linewright/issues/610" aria-label="#610 on GitHub" data-tip="#610 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/613">#613</a><a class="github" href="https://github.com/tibbe/linewright/issues/613" aria-label="#613 on GitHub" data-tip="#613 on GitHub"></a> · <time datetime="2026-10-26T10:04:05Z" tabindex="0">2026-10-26 10:04:05 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-587">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/587">#587: Spec change: Install jq and ripgrep, and spec tests as running real git</a><a class="github" href="https://github.com/tibbe/linewright/issues/587" aria-label="#587 on GitHub" data-tip="#587 on GitHub"></a> — 3/3 tickets closed — finished <time datetime="2026-10-26T07:49:26Z" tabindex="0">2026-10-26 07:49:26 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/588">#588: Give the local store one module that writes its history</a><a class="github" href="https://github.com/tibbe/linewright/issues/588" aria-label="#588 on GitHub" data-tip="#588 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/591">#591</a><a class="github" href="https://github.com/tibbe/linewright/issues/591" aria-label="#591 on GitHub" data-tip="#591 on GitHub"></a> · <time datetime="2026-10-26T06:58:55Z" tabindex="0">2026-10-26 06:58:55 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/589">#589: Seed the local store&#39;s commits with one git fast-import</a><a class="github" href="https://github.com/tibbe/linewright/issues/589" aria-label="#589 on GitHub" data-tip="#589 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/599">#599</a><a class="github" href="https://github.com/tibbe/linewright/issues/599" aria-label="#599 on GitHub" data-tip="#599 on GitHub"></a> · <time datetime="2026-10-26T07:18:33Z" tabindex="0">2026-10-26 07:18:33 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/590">#590: Merge and rebase in the local store without a clone</a><a class="github" href="https://github.com/tibbe/linewright/issues/590" aria-label="#590 on GitHub" data-tip="#590 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/604">#604</a><a class="github" href="https://github.com/tibbe/linewright/issues/604" aria-label="#604 on GitHub" data-tip="#604 on GitHub"></a> · <time datetime="2026-10-26T07:49:26Z" tabindex="0">2026-10-26 07:49:26 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-597">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/597">#597: Upgrade hmac to 0.13.0 and sha2 to 0.11.1</a><a class="github" href="https://github.com/tibbe/linewright/issues/597" aria-label="#597 on GitHub" data-tip="#597 on GitHub"></a> — finished <time datetime="2026-10-26T07:48:01Z" tabindex="0">2026-10-26 07:48:01 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/597">#597: Upgrade hmac to 0.13.0 and sha2 to 0.11.1</a><a class="github" href="https://github.com/tibbe/linewright/issues/597" aria-label="#597 on GitHub" data-tip="#597 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/606">#606</a><a class="github" href="https://github.com/tibbe/linewright/issues/606" aria-label="#606 on GitHub" data-tip="#606 on GitHub"></a> · <time datetime="2026-10-26T07:48:01Z" tabindex="0">2026-10-26 07:48:01 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-596">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/596">#596: Upgrade toml to 1.1.8</a><a class="github" href="https://github.com/tibbe/linewright/issues/596" aria-label="#596 on GitHub" data-tip="#596 on GitHub"></a> — finished <time datetime="2026-10-26T07:36:04Z" tabindex="0">2026-10-26 07:36:04 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/596">#596: Upgrade toml to 1.1.8</a><a class="github" href="https://github.com/tibbe/linewright/issues/596" aria-label="#596 on GitHub" data-tip="#596 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/605">#605</a><a class="github" href="https://github.com/tibbe/linewright/issues/605" aria-label="#605 on GitHub" data-tip="#605 on GitHub"></a> · <time datetime="2026-10-26T07:36:04Z" tabindex="0">2026-10-26 07:36:04 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-595">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/595">#595: Upgrade reqwest to 0.13.5</a><a class="github" href="https://github.com/tibbe/linewright/issues/595" aria-label="#595 on GitHub" data-tip="#595 on GitHub"></a> — finished <time datetime="2026-10-26T07:34:57Z" tabindex="0">2026-10-26 07:34:57 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/595">#595: Upgrade reqwest to 0.13.5</a><a class="github" href="https://github.com/tibbe/linewright/issues/595" aria-label="#595 on GitHub" data-tip="#595 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/603">#603</a><a class="github" href="https://github.com/tibbe/linewright/issues/603" aria-label="#603 on GitHub" data-tip="#603 on GitHub"></a> · <time datetime="2026-10-26T07:34:57Z" tabindex="0">2026-10-26 07:34:57 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-593">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/593">#593: Upgrade base64 to 0.23.1</a><a class="github" href="https://github.com/tibbe/linewright/issues/593" aria-label="#593 on GitHub" data-tip="#593 on GitHub"></a> — finished <time datetime="2026-10-26T07:31:56Z" tabindex="0">2026-10-26 07:31:56 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/593">#593: Upgrade base64 to 0.23.1</a><a class="github" href="https://github.com/tibbe/linewright/issues/593" aria-label="#593 on GitHub" data-tip="#593 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/602">#602</a><a class="github" href="https://github.com/tibbe/linewright/issues/602" aria-label="#602 on GitHub" data-tip="#602 on GitHub"></a> · <time datetime="2026-10-26T07:31:56Z" tabindex="0">2026-10-26 07:31:56 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-594">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/594">#594: Upgrade dirs to 7.0.0</a><a class="github" href="https://github.com/tibbe/linewright/issues/594" aria-label="#594 on GitHub" data-tip="#594 on GitHub"></a> — finished <time datetime="2026-10-26T07:30:51Z" tabindex="0">2026-10-26 07:30:51 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/594">#594: Upgrade dirs to 7.0.0</a><a class="github" href="https://github.com/tibbe/linewright/issues/594" aria-label="#594 on GitHub" data-tip="#594 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/601">#601</a><a class="github" href="https://github.com/tibbe/linewright/issues/601" aria-label="#601 on GitHub" data-tip="#601 on GitHub"></a> · <time datetime="2026-10-26T07:30:51Z" tabindex="0">2026-10-26 07:30:51 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-592">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/592">#592: Update the locked dependencies</a><a class="github" href="https://github.com/tibbe/linewright/issues/592" aria-label="#592 on GitHub" data-tip="#592 on GitHub"></a> — finished <time datetime="2026-10-26T07:26:29Z" tabindex="0">2026-10-26 07:26:29 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/592">#592: Update the locked dependencies</a><a class="github" href="https://github.com/tibbe/linewright/issues/592" aria-label="#592 on GitHub" data-tip="#592 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/600">#600</a><a class="github" href="https://github.com/tibbe/linewright/issues/600" aria-label="#600 on GitHub" data-tip="#600 on GitHub"></a> · <time datetime="2026-10-26T07:26:29Z" tabindex="0">2026-10-26 07:26:29 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-584">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/584">#584: Upgrade Claude Code to 2.1.308</a><a class="github" href="https://github.com/tibbe/linewright/issues/584" aria-label="#584 on GitHub" data-tip="#584 on GitHub"></a> — finished <time datetime="2026-10-26T06:18:06Z" tabindex="0">2026-10-26 06:18:06 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/584">#584: Upgrade Claude Code to 2.1.308</a><a class="github" href="https://github.com/tibbe/linewright/issues/584" aria-label="#584 on GitHub" data-tip="#584 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/585">#585</a><a class="github" href="https://github.com/tibbe/linewright/issues/585" aria-label="#585 on GitHub" data-tip="#585 on GitHub"></a> · <time datetime="2026-10-26T06:18:06Z" tabindex="0">2026-10-26 06:18:06 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-579">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/579">#579: Spec change: Redact the credentials sessions get without the operator naming them</a><a class="github" href="https://github.com/tibbe/linewright/issues/579" aria-label="#579 on GitHub" data-tip="#579 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-24T05:55:55Z" tabindex="0">2026-10-24 05:55:55 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/580">#580: Redact the harness&#39;s credentials and proxy passwords that sessions get without `secrets`</a><a class="github" href="https://github.com/tibbe/linewright/issues/580" aria-label="#580 on GitHub" data-tip="#580 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/582">#582</a><a class="github" href="https://github.com/tibbe/linewright/issues/582" aria-label="#582 on GitHub" data-tip="#582 on GitHub"></a> · <time datetime="2026-10-24T05:55:55Z" tabindex="0">2026-10-24 05:55:55 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-571">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/571">#571: Spec change: Redact the secrets the operator names, not names that look secret</a><a class="github" href="https://github.com/tibbe/linewright/issues/571" aria-label="#571 on GitHub" data-tip="#571 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-23T17:35:33Z" tabindex="0">2026-10-23 17:35:33 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/572">#572: Prefactor: share variable-name lists between session-env and secrets, and call credentials secrets</a><a class="github" href="https://github.com/tibbe/linewright/issues/572" aria-label="#572 on GitHub" data-tip="#572 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/575">#575</a><a class="github" href="https://github.com/tibbe/linewright/issues/575" aria-label="#575 on GitHub" data-tip="#575 on GitHub"></a> · <time datetime="2026-10-23T15:54:27Z" tabindex="0">2026-10-23 15:54:27 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/573">#573: Redact the secrets the operator names in `secrets`, not names that look secret</a><a class="github" href="https://github.com/tibbe/linewright/issues/573" aria-label="#573 on GitHub" data-tip="#573 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/576">#576</a><a class="github" href="https://github.com/tibbe/linewright/issues/576" aria-label="#576 on GitHub" data-tip="#576 on GitHub"></a> · <time datetime="2026-10-23T17:35:33Z" tabindex="0">2026-10-23 17:35:33 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-577">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/577">#577: Say whether Claude Code&#39;s other login variables are secrets</a><a class="github" href="https://github.com/tibbe/linewright/issues/577" aria-label="#577 on GitHub" data-tip="#577 on GitHub"></a> — finished <time datetime="2026-10-23T16:10:10Z" tabindex="0">2026-10-23 16:10:10 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/577">#577: Say whether Claude Code&#39;s other login variables are secrets</a><a class="github" href="https://github.com/tibbe/linewright/issues/577" aria-label="#577 on GitHub" data-tip="#577 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/578">#578</a><a class="github" href="https://github.com/tibbe/linewright/issues/578" aria-label="#578 on GitHub" data-tip="#578 on GitHub"></a> · <time datetime="2026-10-23T16:10:10Z" tabindex="0">2026-10-23 16:10:10 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-574">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/574">#574: Should Claude Code&#39;s other login variables count as variables Linewright reads a credential from?</a><a class="github" href="https://github.com/tibbe/linewright/issues/574" aria-label="#574 on GitHub" data-tip="#574 on GitHub"></a> — finished <time datetime="2026-10-23T16:10:09Z" tabindex="0">2026-10-23 16:10:09 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/574">#574: Should Claude Code&#39;s other login variables count as variables Linewright reads a credential from?</a><a class="github" href="https://github.com/tibbe/linewright/issues/574" aria-label="#574 on GitHub" data-tip="#574 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/578">#578</a><a class="github" href="https://github.com/tibbe/linewright/issues/578" aria-label="#578 on GitHub" data-tip="#578 on GitHub"></a> · <time datetime="2026-10-23T16:10:09Z" tabindex="0">2026-10-23 16:10:09 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-563">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/563">#563: Spec change: Spec cut text shown whole in a tooltip over the page</a><a class="github" href="https://github.com/tibbe/linewright/issues/563" aria-label="#563 on GitHub" data-tip="#563 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-23T12:36:48Z" tabindex="0">2026-10-23 12:36:48 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/564">#564: Show the rail&#39;s repository name in the page&#39;s one tooltip, over the page</a><a class="github" href="https://github.com/tibbe/linewright/issues/564" aria-label="#564 on GitHub" data-tip="#564 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/567">#567</a><a class="github" href="https://github.com/tibbe/linewright/issues/567" aria-label="#567 on GitHub" data-tip="#567 on GitHub"></a> · <time datetime="2026-10-23T12:21:40Z" tabindex="0">2026-10-23 12:21:40 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/565">#565: Show cut text whole, and what a hover shows also on keyboard focus, in the page&#39;s tooltip</a><a class="github" href="https://github.com/tibbe/linewright/issues/565" aria-label="#565 on GitHub" data-tip="#565 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/568">#568</a><a class="github" href="https://github.com/tibbe/linewright/issues/568" aria-label="#568 on GitHub" data-tip="#568 on GitHub"></a> · <time datetime="2026-10-23T12:36:48Z" tabindex="0">2026-10-23 12:36:48 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-552">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/552">#552: Spec change: Spec every duration&#39;s form, who a `needs-info` card names, which labels Linewright keeps and a feature&#39;s settings as values</a><a class="github" href="https://github.com/tibbe/linewright/issues/552" aria-label="#552 on GitHub" data-tip="#552 on GitHub"></a> — 5/5 tickets closed — finished <time datetime="2026-10-23T12:16:17Z" tabindex="0">2026-10-23 12:16:17 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/553">#553: Show every duration to its two largest units</a><a class="github" href="https://github.com/tibbe/linewright/issues/553" aria-label="#553 on GitHub" data-tip="#553 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/560">#560</a><a class="github" href="https://github.com/tibbe/linewright/issues/560" aria-label="#560 on GitHub" data-tip="#560 on GitHub"></a> · <time datetime="2026-10-23T12:02:08Z" tabindex="0">2026-10-23 12:02:08 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/554">#554: Name the people asked on a needs-info card</a><a class="github" href="https://github.com/tibbe/linewright/issues/554" aria-label="#554 on GitHub" data-tip="#554 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/562">#562</a><a class="github" href="https://github.com/tibbe/linewright/issues/562" aria-label="#562 on GitHub" data-tip="#562 on GitHub"></a> · <time datetime="2026-10-23T12:06:29Z" tabindex="0">2026-10-23 12:06:29 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/555">#555: Decide startup label changes in the functional core</a><a class="github" href="https://github.com/tibbe/linewright/issues/555" aria-label="#555 on GitHub" data-tip="#555 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/561">#561</a><a class="github" href="https://github.com/tibbe/linewright/issues/561" aria-label="#561 on GitHub" data-tip="#561 on GitHub"></a> · <time datetime="2026-10-23T12:03:54Z" tabindex="0">2026-10-23 12:03:54 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/556">#556: Set each linewright: label&#39;s description at every startup</a><a class="github" href="https://github.com/tibbe/linewright/issues/556" aria-label="#556 on GitHub" data-tip="#556 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/566">#566</a><a class="github" href="https://github.com/tibbe/linewright/issues/566" aria-label="#566 on GitHub" data-tip="#566 on GitHub"></a> · <time datetime="2026-10-23T12:16:17Z" tabindex="0">2026-10-23 12:16:17 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/557">#557: Refuse a feature&#39;s setting only when it is not at its default</a><a class="github" href="https://github.com/tibbe/linewright/issues/557" aria-label="#557 on GitHub" data-tip="#557 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/559">#559</a><a class="github" href="https://github.com/tibbe/linewright/issues/559" aria-label="#559 on GitHub" data-tip="#559 on GitHub"></a> · <time datetime="2026-10-23T12:00:43Z" tabindex="0">2026-10-23 12:00:43 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-538">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/538">#538: Spec change: Have triage find the facts it can reach before asking, and say what it tried</a><a class="github" href="https://github.com/tibbe/linewright/issues/538" aria-label="#538 on GitHub" data-tip="#538 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-23T11:39:50Z" tabindex="0">2026-10-23 11:39:50 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/539">#539: Describe `needs-info` as waiting on a fact only a person knows, from the people asked</a><a class="github" href="https://github.com/tibbe/linewright/issues/539" aria-label="#539 on GitHub" data-tip="#539 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/543">#543</a><a class="github" href="https://github.com/tibbe/linewright/issues/543" aria-label="#543 on GitHub" data-tip="#543 on GitHub"></a> · <time datetime="2026-10-23T11:39:50Z" tabindex="0">2026-10-23 11:39:50 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-549">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/549">#549: Card says &quot;checks running&quot; when a finished check run still reports `in_progress`</a><a class="github" href="https://github.com/tibbe/linewright/issues/549" aria-label="#549 on GitHub" data-tip="#549 on GitHub"></a> — finished <time datetime="2026-10-23T11:37:46Z" tabindex="0">2026-10-23 11:37:46 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/549">#549: Card says &quot;checks running&quot; when a finished check run still reports `in_progress`</a><a class="github" href="https://github.com/tibbe/linewright/issues/549" aria-label="#549 on GitHub" data-tip="#549 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/550">#550</a><a class="github" href="https://github.com/tibbe/linewright/issues/550" aria-label="#550 on GitHub" data-tip="#550 on GitHub"></a> · <time datetime="2026-10-23T11:37:46Z" tabindex="0">2026-10-23 11:37:46 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-530">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/530">#530: Say whether an explicitly empty feature setting counts as set</a><a class="github" href="https://github.com/tibbe/linewright/issues/530" aria-label="#530 on GitHub" data-tip="#530 on GitHub"></a> — finished <time datetime="2026-10-23T11:37:19Z" tabindex="0">2026-10-23 11:37:19 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/530">#530: Say whether an explicitly empty feature setting counts as set</a><a class="github" href="https://github.com/tibbe/linewright/issues/530" aria-label="#530 on GitHub" data-tip="#530 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/551">#551</a><a class="github" href="https://github.com/tibbe/linewright/issues/551" aria-label="#551 on GitHub" data-tip="#551 on GitHub"></a> · <time datetime="2026-10-23T11:37:19Z" tabindex="0">2026-10-23 11:37:19 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-541">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/541">#541: Should Linewright update the description of its labels that already exist?</a><a class="github" href="https://github.com/tibbe/linewright/issues/541" aria-label="#541 on GitHub" data-tip="#541 on GitHub"></a> — finished <time datetime="2026-10-23T11:37:19Z" tabindex="0">2026-10-23 11:37:19 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/541">#541: Should Linewright update the description of its labels that already exist?</a><a class="github" href="https://github.com/tibbe/linewright/issues/541" aria-label="#541 on GitHub" data-tip="#541 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/551">#551</a><a class="github" href="https://github.com/tibbe/linewright/issues/551" aria-label="#551 on GitHub" data-tip="#551 on GitHub"></a> · <time datetime="2026-10-23T11:37:19Z" tabindex="0">2026-10-23 11:37:19 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-540">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/540">#540: Board card &quot;reporter asked&quot; for `needs-info` when the people asked may not include the reporter</a><a class="github" href="https://github.com/tibbe/linewright/issues/540" aria-label="#540 on GitHub" data-tip="#540 on GitHub"></a> — finished <time datetime="2026-10-23T11:37:18Z" tabindex="0">2026-10-23 11:37:18 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/540">#540: Board card &quot;reporter asked&quot; for `needs-info` when the people asked may not include the reporter</a><a class="github" href="https://github.com/tibbe/linewright/issues/540" aria-label="#540 on GitHub" data-tip="#540 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/551">#551</a><a class="github" href="https://github.com/tibbe/linewright/issues/551" aria-label="#551 on GitHub" data-tip="#551 on GitHub"></a> · <time datetime="2026-10-23T11:37:18Z" tabindex="0">2026-10-23 11:37:18 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-546">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/546">#546: Say how the transcript shows a sub-agent&#39;s time</a><a class="github" href="https://github.com/tibbe/linewright/issues/546" aria-label="#546 on GitHub" data-tip="#546 on GitHub"></a> — finished <time datetime="2026-10-23T11:37:18Z" tabindex="0">2026-10-23 11:37:18 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/546">#546: Say how the transcript shows a sub-agent&#39;s time</a><a class="github" href="https://github.com/tibbe/linewright/issues/546" aria-label="#546 on GitHub" data-tip="#546 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/551">#551</a><a class="github" href="https://github.com/tibbe/linewright/issues/551" aria-label="#551 on GitHub" data-tip="#551 on GitHub"></a> · <time datetime="2026-10-23T11:37:18Z" tabindex="0">2026-10-23 11:37:18 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-544">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/544">#544: Spec change: Spec how the web UI writes past times and durations as prior art does</a><a class="github" href="https://github.com/tibbe/linewright/issues/544" aria-label="#544 on GitHub" data-tip="#544 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-23T10:43:48Z" tabindex="0">2026-10-23 10:43:48 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/545">#545: Show past times in words and a card&#39;s wait as when it entered its column, and a run&#39;s duration to two units</a><a class="github" href="https://github.com/tibbe/linewright/issues/545" aria-label="#545 on GitHub" data-tip="#545 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/547">#547</a><a class="github" href="https://github.com/tibbe/linewright/issues/547" aria-label="#547 on GitHub" data-tip="#547 on GitHub"></a> · <time datetime="2026-10-23T10:43:48Z" tabindex="0">2026-10-23 10:43:48 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-533">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/533">#533: Spec change: Spec event streams that pass through a reverse proxy unbuffered</a><a class="github" href="https://github.com/tibbe/linewright/issues/533" aria-label="#533 on GitHub" data-tip="#533 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-23T10:10:27Z" tabindex="0">2026-10-23 10:10:27 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/534">#534: Event streams pass through a reverse proxy unbuffered, unchanged and uncached</a><a class="github" href="https://github.com/tibbe/linewright/issues/534" aria-label="#534 on GitHub" data-tip="#534 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/537">#537</a><a class="github" href="https://github.com/tibbe/linewright/issues/537" aria-label="#537 on GitHub" data-tip="#537 on GitHub"></a> · <time datetime="2026-10-23T10:10:27Z" tabindex="0">2026-10-23 10:10:27 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-527">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/527">#527: Spec change: Spec a feature&#39;s settings as an error while the feature is off</a><a class="github" href="https://github.com/tibbe/linewright/issues/527" aria-label="#527 on GitHub" data-tip="#527 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-23T10:08:11Z" tabindex="0">2026-10-23 10:08:11 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/528">#528: Check a feature&#39;s settings against one table of features</a><a class="github" href="https://github.com/tibbe/linewright/issues/528" aria-label="#528 on GitHub" data-tip="#528 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/531">#531</a><a class="github" href="https://github.com/tibbe/linewright/issues/531" aria-label="#531 on GitHub" data-tip="#531 on GitHub"></a> · <time datetime="2026-10-23T09:53:46Z" tabindex="0">2026-10-23 09:53:46 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/529">#529: Refuse `ui-hosts` with no web UI and `merge-method` without `auto-merge`</a><a class="github" href="https://github.com/tibbe/linewright/issues/529" aria-label="#529 on GitHub" data-tip="#529 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/536">#536</a><a class="github" href="https://github.com/tibbe/linewright/issues/536" aria-label="#536 on GitHub" data-tip="#536 on GitHub"></a> · <time datetime="2026-10-23T10:08:11Z" tabindex="0">2026-10-23 10:08:11 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-523">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/523">#523: Say whether `ui-hosts` set while `ui-address` is empty is an error</a><a class="github" href="https://github.com/tibbe/linewright/issues/523" aria-label="#523 on GitHub" data-tip="#523 on GitHub"></a> — finished <time datetime="2026-10-23T09:37:26Z" tabindex="0">2026-10-23 09:37:26 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/523">#523: Say whether `ui-hosts` set while `ui-address` is empty is an error</a><a class="github" href="https://github.com/tibbe/linewright/issues/523" aria-label="#523 on GitHub" data-tip="#523 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/526">#526</a><a class="github" href="https://github.com/tibbe/linewright/issues/526" aria-label="#526 on GitHub" data-tip="#526 on GitHub"></a> · <time datetime="2026-10-23T09:37:26Z" tabindex="0">2026-10-23 09:37:26 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-520">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/520">#520: Spec change: Spec the web UI on a port of its own</a><a class="github" href="https://github.com/tibbe/linewright/issues/520" aria-label="#520 on GitHub" data-tip="#520 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-23T08:13:47Z" tabindex="0">2026-10-23 08:13:47 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/521">#521: Split the web UI&#39;s router from the local API&#39;s, with one Host reader and one listener runner</a><a class="github" href="https://github.com/tibbe/linewright/issues/521" aria-label="#521 on GitHub" data-tip="#521 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/524">#524</a><a class="github" href="https://github.com/tibbe/linewright/issues/524" aria-label="#524 on GitHub" data-tip="#524 on GitHub"></a> · <time datetime="2026-10-23T06:26:14Z" tabindex="0">2026-10-23 06:26:14 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/522">#522: Serve the web UI on `ui-address`, answering only local, IP or `ui-hosts` names</a><a class="github" href="https://github.com/tibbe/linewright/issues/522" aria-label="#522 on GitHub" data-tip="#522 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/525">#525</a><a class="github" href="https://github.com/tibbe/linewright/issues/525" aria-label="#525 on GitHub" data-tip="#525 on GitHub"></a> · <time datetime="2026-10-23T08:13:47Z" tabindex="0">2026-10-23 08:13:47 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-513">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/513">#513: Spec change: Make each board lane a surface sunk into the page</a><a class="github" href="https://github.com/tibbe/linewright/issues/513" aria-label="#513 on GitHub" data-tip="#513 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-22T14:14:46Z" tabindex="0">2026-10-22 14:14:46 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/514">#514: Make each board lane a surface sunk into the page, its cards raised on it</a><a class="github" href="https://github.com/tibbe/linewright/issues/514" aria-label="#514 on GitHub" data-tip="#514 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/516">#516</a><a class="github" href="https://github.com/tibbe/linewright/issues/516" aria-label="#516 on GitHub" data-tip="#516 on GitHub"></a> · <time datetime="2026-10-22T14:14:46Z" tabindex="0">2026-10-22 14:14:46 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-511">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/511">#511: `drain` returns before `serve` has exited, so a `serve` started right after refuses to start</a><a class="github" href="https://github.com/tibbe/linewright/issues/511" aria-label="#511 on GitHub" data-tip="#511 on GitHub"></a> — finished <time datetime="2026-10-22T14:05:37Z" tabindex="0">2026-10-22 14:05:37 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/511">#511: `drain` returns before `serve` has exited, so a `serve` started right after refuses to start</a><a class="github" href="https://github.com/tibbe/linewright/issues/511" aria-label="#511 on GitHub" data-tip="#511 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/515">#515</a><a class="github" href="https://github.com/tibbe/linewright/issues/515" aria-label="#515 on GitHub" data-tip="#515 on GitHub"></a> · <time datetime="2026-10-22T14:05:37Z" tabindex="0">2026-10-22 14:05:37 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-495">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/495">#495: Spec change: Settle the open spec questions on the web UI</a><a class="github" href="https://github.com/tibbe/linewright/issues/495" aria-label="#495 on GitHub" data-tip="#495 on GitHub"></a> — 7/7 tickets closed — finished <time datetime="2026-10-22T11:52:02Z" tabindex="0">2026-10-22 11:52:02 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/496">#496: Drop the status line, show the owner&#39;s avatar in the rail, and show cut lane heads whole on hover and focus</a><a class="github" href="https://github.com/tibbe/linewright/issues/496" aria-label="#496 on GitHub" data-tip="#496 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/505">#505</a><a class="github" href="https://github.com/tibbe/linewright/issues/505" aria-label="#505 on GitHub" data-tip="#505 on GitHub"></a> · <time datetime="2026-10-22T11:03:41Z" tabindex="0">2026-10-22 11:03:41 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/497">#497: Decide a merged pull request&#39;s standing as a spec change in one place</a><a class="github" href="https://github.com/tibbe/linewright/issues/497" aria-label="#497 on GitHub" data-tip="#497 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/504">#504</a><a class="github" href="https://github.com/tibbe/linewright/issues/504" aria-label="#504 on GitHub" data-tip="#504 on GitHub"></a> · <time datetime="2026-10-22T10:58:37Z" tabindex="0">2026-10-22 10:58:37 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/498">#498: Manage only items marked for Linewright or that it has worked</a><a class="github" href="https://github.com/tibbe/linewright/issues/498" aria-label="#498 on GitHub" data-tip="#498 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/507">#507</a><a class="github" href="https://github.com/tibbe/linewright/issues/507" aria-label="#507 on GitHub" data-tip="#507 on GitHub"></a> · <time datetime="2026-10-22T11:16:06Z" tabindex="0">2026-10-22 11:16:06 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/499">#499: Say &quot;unassigned&quot; on Ready cards and leave the number off an In review card that is its own pull request</a><a class="github" href="https://github.com/tibbe/linewright/issues/499" aria-label="#499 on GitHub" data-tip="#499 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/508">#508</a><a class="github" href="https://github.com/tibbe/linewright/issues/508" aria-label="#508 on GitHub" data-tip="#508 on GitHub"></a> · <time datetime="2026-10-22T11:30:24Z" tabindex="0">2026-10-22 11:30:24 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/500">#500: Show the polls failed since the last that succeeded, in `status` and on every page</a><a class="github" href="https://github.com/tibbe/linewright/issues/500" aria-label="#500 on GitHub" data-tip="#500 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/509">#509</a><a class="github" href="https://github.com/tibbe/linewright/issues/509" aria-label="#509 on GitHub" data-tip="#509 on GitHub"></a> · <time datetime="2026-10-22T11:34:56Z" tabindex="0">2026-10-22 11:34:56 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/501">#501: Show the server page&#39;s facts in the UI&#39;s own words</a><a class="github" href="https://github.com/tibbe/linewright/issues/501" aria-label="#501 on GitHub" data-tip="#501 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/510">#510</a><a class="github" href="https://github.com/tibbe/linewright/issues/510" aria-label="#510 on GitHub" data-tip="#510 on GitHub"></a> · <time datetime="2026-10-22T11:52:02Z" tabindex="0">2026-10-22 11:52:02 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/502">#502: Narrow the runs page by item, stage and since alone, and say &quot;No runs&quot; for an item without any</a><a class="github" href="https://github.com/tibbe/linewright/issues/502" aria-label="#502 on GitHub" data-tip="#502 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/506">#506</a><a class="github" href="https://github.com/tibbe/linewright/issues/506" aria-label="#506 on GitHub" data-tip="#506 on GitHub"></a> · <time datetime="2026-10-22T11:15:33Z" tabindex="0">2026-10-22 11:15:33 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-489">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/489">#489: Item page: is the run in flight a row of the runs table only?</a><a class="github" href="https://github.com/tibbe/linewright/issues/489" aria-label="#489 on GitHub" data-tip="#489 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:27Z" tabindex="0">2026-10-22 10:34:27 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/489">#489: Item page: is the run in flight a row of the runs table only?</a><a class="github" href="https://github.com/tibbe/linewright/issues/489" aria-label="#489 on GitHub" data-tip="#489 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:27Z" tabindex="0">2026-10-22 10:34:27 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-488">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/488">#488: Runs page: an item with no runs shows an error or &quot;No runs&quot;?</a><a class="github" href="https://github.com/tibbe/linewright/issues/488" aria-label="#488 on GitHub" data-tip="#488 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:23Z" tabindex="0">2026-10-22 10:34:23 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/488">#488: Runs page: an item with no runs shows an error or &quot;No runs&quot;?</a><a class="github" href="https://github.com/tibbe/linewright/issues/488" aria-label="#488 on GitHub" data-tip="#488 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:23Z" tabindex="0">2026-10-22 10:34:23 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-481">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/481">#481: Is a session that gave up a stall?</a><a class="github" href="https://github.com/tibbe/linewright/issues/481" aria-label="#481 on GitHub" data-tip="#481 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:18Z" tabindex="0">2026-10-22 10:34:18 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/481">#481: Is a session that gave up a stall?</a><a class="github" href="https://github.com/tibbe/linewright/issues/481" aria-label="#481 on GitHub" data-tip="#481 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:18Z" tabindex="0">2026-10-22 10:34:18 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-475">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/475">#475: Say whether an In review card that is itself the pull request repeats its number in its line</a><a class="github" href="https://github.com/tibbe/linewright/issues/475" aria-label="#475 on GitHub" data-tip="#475 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:14Z" tabindex="0">2026-10-22 10:34:14 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/475">#475: Say whether an In review card that is itself the pull request repeats its number in its line</a><a class="github" href="https://github.com/tibbe/linewright/issues/475" aria-label="#475 on GitHub" data-tip="#475 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:14Z" tabindex="0">2026-10-22 10:34:14 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-473">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/473">#473: What a Ready card says when it waits for a maintainer&#39;s label</a><a class="github" href="https://github.com/tibbe/linewright/issues/473" aria-label="#473 on GitHub" data-tip="#473 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:12Z" tabindex="0">2026-10-22 10:34:12 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/473">#473: What a Ready card says when it waits for a maintainer&#39;s label</a><a class="github" href="https://github.com/tibbe/linewright/issues/473" aria-label="#473 on GitHub" data-tip="#473 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:12Z" tabindex="0">2026-10-22 10:34:12 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-467">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/467">#467: Say what the navigation rail shows besides the links</a><a class="github" href="https://github.com/tibbe/linewright/issues/467" aria-label="#467 on GitHub" data-tip="#467 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:09Z" tabindex="0">2026-10-22 10:34:09 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/467">#467: Say what the navigation rail shows besides the links</a><a class="github" href="https://github.com/tibbe/linewright/issues/467" aria-label="#467 on GitHub" data-tip="#467 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:09Z" tabindex="0">2026-10-22 10:34:09 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-464">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/464">#464: Say what the navigation rail shows of the repository name and the status line</a><a class="github" href="https://github.com/tibbe/linewright/issues/464" aria-label="#464 on GitHub" data-tip="#464 on GitHub"></a> — finished <time datetime="2026-10-22T10:34:06Z" tabindex="0">2026-10-22 10:34:06 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/464">#464: Say what the navigation rail shows of the repository name and the status line</a><a class="github" href="https://github.com/tibbe/linewright/issues/464" aria-label="#464 on GitHub" data-tip="#464 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-22T10:34:06Z" tabindex="0">2026-10-22 10:34:06 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-468">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/468">#468: Say that a card&#39;s title is whole on keyboard focus, not only on hover</a><a class="github" href="https://github.com/tibbe/linewright/issues/468" aria-label="#468 on GitHub" data-tip="#468 on GitHub"></a> — finished <time datetime="2026-10-22T10:32:13Z" tabindex="0">2026-10-22 10:32:13 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/468">#468: Say that a card&#39;s title is whole on keyboard focus, not only on hover</a><a class="github" href="https://github.com/tibbe/linewright/issues/468" aria-label="#468 on GitHub" data-tip="#468 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/494">#494</a><a class="github" href="https://github.com/tibbe/linewright/issues/494" aria-label="#494 on GitHub" data-tip="#494 on GitHub"></a> · <time datetime="2026-10-22T10:32:13Z" tabindex="0">2026-10-22 10:32:13 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-485">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/485">#485: Spec change: Show lists of runs as tables</a><a class="github" href="https://github.com/tibbe/linewright/issues/485" aria-label="#485 on GitHub" data-tip="#485 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-22T07:08:57Z" tabindex="0">2026-10-22 07:08:57 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/486">#486: Share the board&#39;s scroll box with other pages, and pin the automations table&#39;s heads in it</a><a class="github" href="https://github.com/tibbe/linewright/issues/486" aria-label="#486 on GitHub" data-tip="#486 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/490">#490</a><a class="github" href="https://github.com/tibbe/linewright/issues/490" aria-label="#490 on GitHub" data-tip="#490 on GitHub"></a> · <time datetime="2026-10-22T06:50:57Z" tabindex="0">2026-10-22 06:50:57 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/487">#487: Show lists of runs as tables on the runs page and the item page</a><a class="github" href="https://github.com/tibbe/linewright/issues/487" aria-label="#487 on GitHub" data-tip="#487 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/491">#491</a><a class="github" href="https://github.com/tibbe/linewright/issues/491" aria-label="#491 on GitHub" data-tip="#491 on GitHub"></a> · <time datetime="2026-10-22T07:08:57Z" tabindex="0">2026-10-22 07:08:57 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-478">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/478">#478: Spec change: Order the board&#39;s lanes by last change, and mark stalled hand-backs</a><a class="github" href="https://github.com/tibbe/linewright/issues/478" aria-label="#478 on GitHub" data-tip="#478 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-21T17:04:45Z" tabindex="0">2026-10-21 17:04:45 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/479">#479: Mark stalled hand-backs with linewright:stalled, and show them on the board and in explain</a><a class="github" href="https://github.com/tibbe/linewright/issues/479" aria-label="#479 on GitHub" data-tip="#479 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/482">#482</a><a class="github" href="https://github.com/tibbe/linewright/issues/482" aria-label="#482 on GitHub" data-tip="#482 on GitHub"></a> · <time datetime="2026-10-21T16:10:13Z" tabindex="0">2026-10-21 16:10:13 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/480">#480: Order the board&#39;s lanes by last change, and show how long a card has been in its column</a><a class="github" href="https://github.com/tibbe/linewright/issues/480" aria-label="#480 on GitHub" data-tip="#480 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/483">#483</a><a class="github" href="https://github.com/tibbe/linewright/issues/483" aria-label="#483 on GitHub" data-tip="#483 on GitHub"></a> · <time datetime="2026-10-21T17:04:45Z" tabindex="0">2026-10-21 17:04:45 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-470">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/470">#470: Spec change: Make a board card say only what its column does not</a><a class="github" href="https://github.com/tibbe/linewright/issues/470" aria-label="#470 on GitHub" data-tip="#470 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-21T12:56:07Z" tabindex="0">2026-10-21 12:56:07 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/471">#471: Make a board card say only what its column does not</a><a class="github" href="https://github.com/tibbe/linewright/issues/471" aria-label="#471 on GitHub" data-tip="#471 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/474">#474</a><a class="github" href="https://github.com/tibbe/linewright/issues/474" aria-label="#474 on GitHub" data-tip="#474 on GitHub"></a> · <time datetime="2026-10-21T12:31:37Z" tabindex="0">2026-10-21 12:31:37 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/472">#472: Show GitHub&#39;s close reason and review decision on board cards</a><a class="github" href="https://github.com/tibbe/linewright/issues/472" aria-label="#472 on GitHub" data-tip="#472 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/476">#476</a><a class="github" href="https://github.com/tibbe/linewright/issues/476" aria-label="#476 on GitHub" data-tip="#476 on GitHub"></a> · <time datetime="2026-10-21T12:56:07Z" tabindex="0">2026-10-21 12:56:07 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-461">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/461">#461: Spec change: Give each piece of work its own lane and fit the board on a laptop</a><a class="github" href="https://github.com/tibbe/linewright/issues/461" aria-label="#461 on GitHub" data-tip="#461 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-21T07:31:27Z" tabindex="0">2026-10-21 07:31:27 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/462">#462: Give each piece of work its own lane on the board</a><a class="github" href="https://github.com/tibbe/linewright/issues/462" aria-label="#462 on GitHub" data-tip="#462 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/465">#465</a><a class="github" href="https://github.com/tibbe/linewright/issues/465" aria-label="#465 on GitHub" data-tip="#465 on GitHub"></a> · <time datetime="2026-10-21T07:11:52Z" tabindex="0">2026-10-21 07:11:52 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/463">#463: Fit the board on a laptop: navigation rail, 200px columns, sticky heads and two-line titles</a><a class="github" href="https://github.com/tibbe/linewright/issues/463" aria-label="#463 on GitHub" data-tip="#463 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/466">#466</a><a class="github" href="https://github.com/tibbe/linewright/issues/466" aria-label="#466 on GitHub" data-tip="#466 on GitHub"></a> · <time datetime="2026-10-21T07:31:27Z" tabindex="0">2026-10-21 07:31:27 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-454">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/454">#454: Spec change: Stop promising that monitoring JSON fields keep their names</a><a class="github" href="https://github.com/tibbe/linewright/issues/454" aria-label="#454 on GitHub" data-tip="#454 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-21T05:41:38Z" tabindex="0">2026-10-21 05:41:38 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/455">#455: Drop quiet_seconds from status --json and explain --json, and the activity clock that feeds it</a><a class="github" href="https://github.com/tibbe/linewright/issues/455" aria-label="#455 on GitHub" data-tip="#455 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/459">#459</a><a class="github" href="https://github.com/tibbe/linewright/issues/459" aria-label="#459 on GitHub" data-tip="#459 on GitHub"></a> · <time datetime="2026-10-21T05:41:38Z" tabindex="0">2026-10-21 05:41:38 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-449">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/449">#449: Should `quiet_seconds` stay in the monitoring JSON now that quiet time isn&#39;t shown?</a><a class="github" href="https://github.com/tibbe/linewright/issues/449" aria-label="#449 on GitHub" data-tip="#449 on GitHub"></a> — finished <time datetime="2026-10-21T05:29:38Z" tabindex="0">2026-10-21 05:29:38 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/449">#449: Should `quiet_seconds` stay in the monitoring JSON now that quiet time isn&#39;t shown?</a><a class="github" href="https://github.com/tibbe/linewright/issues/449" aria-label="#449 on GitHub" data-tip="#449 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/452">#452</a><a class="github" href="https://github.com/tibbe/linewright/issues/452" aria-label="#452 on GitHub" data-tip="#452 on GitHub"></a> · <time datetime="2026-10-21T05:29:38Z" tabindex="0">2026-10-21 05:29:38 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-447">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/447">#447: Spec change: Stop showing a run&#39;s quiet time</a><a class="github" href="https://github.com/tibbe/linewright/issues/447" aria-label="#447 on GitHub" data-tip="#447 on GitHub"></a> — 1/1 tickets closed — finished <time datetime="2026-10-21T05:17:02Z" tabindex="0">2026-10-21 05:17:02 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/448">#448: Show a run in flight without its quiet time</a><a class="github" href="https://github.com/tibbe/linewright/issues/448" aria-label="#448 on GitHub" data-tip="#448 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/451">#451</a><a class="github" href="https://github.com/tibbe/linewright/issues/451" aria-label="#451 on GitHub" data-tip="#451 on GitHub"></a> · <time datetime="2026-10-21T05:17:02Z" tabindex="0">2026-10-21 05:17:02 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-422">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/422">#422: Spec change: Spec a web UI on daisyUI that leads with the work still open</a><a class="github" href="https://github.com/tibbe/linewright/issues/422" aria-label="#422 on GitHub" data-tip="#422 on GitHub"></a> — 5/5 tickets closed — finished <time datetime="2026-10-21T05:12:19Z" tabindex="0">2026-10-21 05:12:19 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/423">#423: Give each web page its own module and every stream one shared frame</a><a class="github" href="https://github.com/tibbe/linewright/issues/423" aria-label="#423 on GitHub" data-tip="#423 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/430">#430</a><a class="github" href="https://github.com/tibbe/linewright/issues/430" aria-label="#430 on GitHub" data-tip="#430 on GitHub"></a> · <time datetime="2026-10-20T20:26:47Z" tabindex="0">2026-10-20 20:26:47 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/424">#424: Style the web UI with daisyUI, its stylesheet generated by Tailwind&#39;s standalone CLI</a><a class="github" href="https://github.com/tibbe/linewright/issues/424" aria-label="#424 on GitHub" data-tip="#424 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/437">#437</a><a class="github" href="https://github.com/tibbe/linewright/issues/437" aria-label="#437 on GitHub" data-tip="#437 on GitHub"></a> · <time datetime="2026-10-21T04:38:21Z" tabindex="0">2026-10-21 04:38:21 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/425">#425: Show a sidebar, holds as alerts and a server page on the web UI</a><a class="github" href="https://github.com/tibbe/linewright/issues/425" aria-label="#425 on GitHub" data-tip="#425 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/443">#443</a><a class="github" href="https://github.com/tibbe/linewright/issues/443" aria-label="#443 on GitHub" data-tip="#443 on GitHub"></a> · <time datetime="2026-10-21T04:53:55Z" tabindex="0">2026-10-21 04:53:55 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/426">#426: Lead the board with the work still open and fold the finished lanes</a><a class="github" href="https://github.com/tibbe/linewright/issues/426" aria-label="#426 on GitHub" data-tip="#426 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/444">#444</a><a class="github" href="https://github.com/tibbe/linewright/issues/444" aria-label="#444 on GitHub" data-tip="#444 on GitHub"></a> · <time datetime="2026-10-21T05:01:21Z" tabindex="0">2026-10-21 05:01:21 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/427">#427: Show the automations page and the automations&#39; problems as holds</a><a class="github" href="https://github.com/tibbe/linewright/issues/427" aria-label="#427 on GitHub" data-tip="#427 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/450">#450</a><a class="github" href="https://github.com/tibbe/linewright/issues/450" aria-label="#450 on GitHub" data-tip="#450 on GitHub"></a> · <time datetime="2026-10-21T05:12:19Z" tabindex="0">2026-10-21 05:12:19 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-441">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/441">#441: Install a pinned gh in the Docker image that stays installable after newer releases</a><a class="github" href="https://github.com/tibbe/linewright/issues/441" aria-label="#441 on GitHub" data-tip="#441 on GitHub"></a> — finished <time datetime="2026-10-21T04:54:34Z" tabindex="0">2026-10-21 04:54:34 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/441">#441: Install a pinned gh in the Docker image that stays installable after newer releases</a><a class="github" href="https://github.com/tibbe/linewright/issues/441" aria-label="#441 on GitHub" data-tip="#441 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/442">#442</a><a class="github" href="https://github.com/tibbe/linewright/issues/442" aria-label="#442 on GitHub" data-tip="#442 on GitHub"></a> · <time datetime="2026-10-21T04:54:34Z" tabindex="0">2026-10-21 04:54:34 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-433">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/433">#433: Spec change: Count runs by hand in an automation&#39;s last run</a><a class="github" href="https://github.com/tibbe/linewright/issues/433" aria-label="#433 on GitHub" data-tip="#433 on GitHub"></a> — 3/3 tickets closed — finished <time datetime="2026-10-20T21:23:48Z" tabindex="0">2026-10-20 21:23:48 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/434">#434: Call the schedule&#39;s anchor an automation&#39;s last scheduled run</a><a class="github" href="https://github.com/tibbe/linewright/issues/434" aria-label="#434 on GitHub" data-tip="#434 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/438">#438</a><a class="github" href="https://github.com/tibbe/linewright/issues/438" aria-label="#438 on GitHub" data-tip="#438 on GitHub"></a> · <time datetime="2026-10-20T20:50:09Z" tabindex="0">2026-10-20 20:50:09 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/435">#435: Record how an automation run started and mark runs by hand wherever a run is shown</a><a class="github" href="https://github.com/tibbe/linewright/issues/435" aria-label="#435 on GitHub" data-tip="#435 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/439">#439</a><a class="github" href="https://github.com/tibbe/linewright/issues/439" aria-label="#439 on GitHub" data-tip="#439 on GitHub"></a> · <time datetime="2026-10-20T21:09:28Z" tabindex="0">2026-10-20 21:09:28 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/436">#436: Show an automation&#39;s newest run, by its schedule or by hand, as its last run in status</a><a class="github" href="https://github.com/tibbe/linewright/issues/436" aria-label="#436 on GitHub" data-tip="#436 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/440">#440</a><a class="github" href="https://github.com/tibbe/linewright/issues/440" aria-label="#440 on GitHub" data-tip="#440 on GitHub"></a> · <time datetime="2026-10-20T21:23:48Z" tabindex="0">2026-10-20 21:23:48 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-428">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/428">#428: Spec: does an automation&#39;s &quot;last run&quot; include runs started by hand?</a><a class="github" href="https://github.com/tibbe/linewright/issues/428" aria-label="#428 on GitHub" data-tip="#428 on GitHub"></a> — finished <time datetime="2026-10-20T20:35:04Z" tabindex="0">2026-10-20 20:35:04 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/428">#428: Spec: does an automation&#39;s &quot;last run&quot; include runs started by hand?</a><a class="github" href="https://github.com/tibbe/linewright/issues/428" aria-label="#428 on GitHub" data-tip="#428 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed as completed · <time datetime="2026-10-20T20:35:04Z" tabindex="0">2026-10-20 20:35:04 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-431">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/431">#431: Keep the architecture spec to its decisions</a><a class="github" href="https://github.com/tibbe/linewright/issues/431" aria-label="#431 on GitHub" data-tip="#431 on GitHub"></a> — finished <time datetime="2026-10-20T20:26:54Z" tabindex="0">2026-10-20 20:26:54 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><svg class="pull-request size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="pull request" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="4" cy="3.5" r="1.75"/><circle cx="4" cy="12.5" r="1.75"/><circle cx="12" cy="12.5" r="1.75"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/>
+</svg><a class="link link-hover" href="/items/431">#431: Keep the architecture spec to its decisions</a><a class="github" href="https://github.com/tibbe/linewright/issues/431" aria-label="#431 on GitHub" data-tip="#431 on GitHub"></a></h3>
+<p class="line text-base-content/70">merged · nothing to build · <time datetime="2026-10-20T20:26:54Z" tabindex="0">2026-10-20 20:26:54 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-416">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/416">#416: Spec change: Loosen the web UI spec where it steered the design</a><a class="github" href="https://github.com/tibbe/linewright/issues/416" aria-label="#416 on GitHub" data-tip="#416 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-20T19:02:13Z" tabindex="0">2026-10-20 19:02:13 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/417">#417: Keep the pages up with htmx&#39;s own SSE extension</a><a class="github" href="https://github.com/tibbe/linewright/issues/417" aria-label="#417 on GitHub" data-tip="#417 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/419">#419</a><a class="github" href="https://github.com/tibbe/linewright/issues/419" aria-label="#419 on GitHub" data-tip="#419 on GitHub"></a> · <time datetime="2026-10-20T17:16:28Z" tabindex="0">2026-10-20 17:16:28 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/418">#418: Write every duration on a page with the browser&#39;s duration format</a><a class="github" href="https://github.com/tibbe/linewright/issues/418" aria-label="#418 on GitHub" data-tip="#418 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/420">#420</a><a class="github" href="https://github.com/tibbe/linewright/issues/420" aria-label="#420 on GitHub" data-tip="#420 on GitHub"></a> · <time datetime="2026-10-20T19:02:13Z" tabindex="0">2026-10-20 19:02:13 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-400">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/400">#400: Design system: the status of a run that ended for the usage limit</a><a class="github" href="https://github.com/tibbe/linewright/issues/400" aria-label="#400 on GitHub" data-tip="#400 on GitHub"></a> — finished <time datetime="2026-10-20T16:58:18Z" tabindex="0">2026-10-20 16:58:18 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/400">#400: Design system: the status of a run that ended for the usage limit</a><a class="github" href="https://github.com/tibbe/linewright/issues/400" aria-label="#400 on GitHub" data-tip="#400 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/401">#401</a><a class="github" href="https://github.com/tibbe/linewright/issues/401" aria-label="#401 on GitHub" data-tip="#401 on GitHub"></a> · <time datetime="2026-10-20T16:58:18Z" tabindex="0">2026-10-20 16:58:18 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-394">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/394">#394: Spec change: Spec the web UI: a board of the managed items and the commands&#39; pages</a><a class="github" href="https://github.com/tibbe/linewright/issues/394" aria-label="#394 on GitHub" data-tip="#394 on GitHub"></a> — 5/5 tickets closed — finished <time datetime="2026-10-20T16:51:55Z" tabindex="0">2026-10-20 16:51:55 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/395">#395: Word the monitoring answers as phrases that name items, times and durations</a><a class="github" href="https://github.com/tibbe/linewright/issues/395" aria-label="#395 on GitHub" data-tip="#395 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/402">#402</a><a class="github" href="https://github.com/tibbe/linewright/issues/402" aria-label="#402 on GitHub" data-tip="#402 on GitHub"></a> · <time datetime="2026-10-20T15:20:56Z" tabindex="0">2026-10-20 15:20:56 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/396">#396: Hold the managed items closed within the spec lookback window</a><a class="github" href="https://github.com/tibbe/linewright/issues/396" aria-label="#396 on GitHub" data-tip="#396 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/403">#403</a><a class="github" href="https://github.com/tibbe/linewright/issues/403" aria-label="#403 on GitHub" data-tip="#403 on GitHub"></a> · <time datetime="2026-10-20T15:37:05Z" tabindex="0">2026-10-20 15:37:05 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/397">#397: Serve the web UI with its bar and the item page, and move the API under /api/</a><a class="github" href="https://github.com/tibbe/linewright/issues/397" aria-label="#397 on GitHub" data-tip="#397 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/404">#404</a><a class="github" href="https://github.com/tibbe/linewright/issues/404" aria-label="#404 on GitHub" data-tip="#404 on GitHub"></a> · <time datetime="2026-10-20T15:52:28Z" tabindex="0">2026-10-20 15:52:28 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/398">#398: Show the managed items as a board of cards in lanes per tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/398" aria-label="#398 on GitHub" data-tip="#398 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/405">#405</a><a class="github" href="https://github.com/tibbe/linewright/issues/405" aria-label="#405 on GitHub" data-tip="#405 on GitHub"></a> · <time datetime="2026-10-20T16:11:31Z" tabindex="0">2026-10-20 16:11:31 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/399">#399: Show the runs page and a run&#39;s transcript, folded and followed</a><a class="github" href="https://github.com/tibbe/linewright/issues/399" aria-label="#399 on GitHub" data-tip="#399 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/414">#414</a><a class="github" href="https://github.com/tibbe/linewright/issues/414" aria-label="#414 on GitHub" data-tip="#414 on GitHub"></a> · <time datetime="2026-10-20T16:51:55Z" tabindex="0">2026-10-20 16:51:55 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-408">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/408">#408: Keep the integration tests&#39; shared helpers once, in an indexed common.rs</a><a class="github" href="https://github.com/tibbe/linewright/issues/408" aria-label="#408 on GitHub" data-tip="#408 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-20T16:51:17Z" tabindex="0">2026-10-20 16:51:17 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/409">#409: Split the integration tests&#39; common.rs into indexed topic submodules and fold views.rs into it</a><a class="github" href="https://github.com/tibbe/linewright/issues/409" aria-label="#409 on GitHub" data-tip="#409 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/411">#411</a><a class="github" href="https://github.com/tibbe/linewright/issues/411" aria-label="#411 on GitHub" data-tip="#411 on GitHub"></a> · <time datetime="2026-10-20T16:38:35Z" tabindex="0">2026-10-20 16:38:35 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/410">#410: Replace the integration tests&#39; local copies of shared helpers with the ones in common</a><a class="github" href="https://github.com/tibbe/linewright/issues/410" aria-label="#410 on GitHub" data-tip="#410 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/415">#415</a><a class="github" href="https://github.com/tibbe/linewright/issues/415" aria-label="#415 on GitHub" data-tip="#415 on GitHub"></a> · <time datetime="2026-10-20T16:51:17Z" tabindex="0">2026-10-20 16:51:17 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-406">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/406">#406: Ready a cut&#39;s tickets only once their design is on the tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/406" aria-label="#406 on GitHub" data-tip="#406 on GitHub"></a> — finished <time datetime="2026-10-20T16:42:59Z" tabindex="0">2026-10-20 16:42:59 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/406">#406: Ready a cut&#39;s tickets only once their design is on the tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/406" aria-label="#406 on GitHub" data-tip="#406 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/413">#413</a><a class="github" href="https://github.com/tibbe/linewright/issues/413" aria-label="#413 on GitHub" data-tip="#413 on GitHub"></a> · <time datetime="2026-10-20T16:42:59Z" tabindex="0">2026-10-20 16:42:59 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-407">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/407">#407: Apply clippy&#39;s fixes when scripts/check fixes what it can</a><a class="github" href="https://github.com/tibbe/linewright/issues/407" aria-label="#407 on GitHub" data-tip="#407 on GitHub"></a> — finished <time datetime="2026-10-20T16:39:47Z" tabindex="0">2026-10-20 16:39:47 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/407">#407: Apply clippy&#39;s fixes when scripts/check fixes what it can</a><a class="github" href="https://github.com/tibbe/linewright/issues/407" aria-label="#407 on GitHub" data-tip="#407 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/412">#412</a><a class="github" href="https://github.com/tibbe/linewright/issues/412" aria-label="#412 on GitHub" data-tip="#412 on GitHub"></a> · <time datetime="2026-10-20T16:39:47Z" tabindex="0">2026-10-20 16:39:47 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-387">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/387">#387: Spec change: Say what removing `linewright:designed` does to an issue&#39;s tickets</a><a class="github" href="https://github.com/tibbe/linewright/issues/387" aria-label="#387 on GitHub" data-tip="#387 on GitHub"></a> — 2/2 tickets closed — finished <time datetime="2026-10-20T14:10:32Z" tabindex="0">2026-10-20 14:10:32 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/388">#388: Plan and run every discarded cut as one action, decided before the rest of the plan</a><a class="github" href="https://github.com/tibbe/linewright/issues/388" aria-label="#388 on GitHub" data-tip="#388 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/390">#390</a><a class="github" href="https://github.com/tibbe/linewright/issues/390" aria-label="#390 on GitHub" data-tip="#390 on GitHub"></a> · <time datetime="2026-10-20T13:49:33Z" tabindex="0">2026-10-20 13:49:33 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/389">#389: Close a discarded cut&#39;s pull requests, and keep sub-issues a person added</a><a class="github" href="https://github.com/tibbe/linewright/issues/389" aria-label="#389 on GitHub" data-tip="#389 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/391">#391</a><a class="github" href="https://github.com/tibbe/linewright/issues/391" aria-label="#391 on GitHub" data-tip="#391 on GitHub"></a> · <time datetime="2026-10-20T14:10:32Z" tabindex="0">2026-10-20 14:10:32 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-384">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/384">#384: Say what happens to an issue&#39;s tickets when `linewright:designed` is removed from its tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/384" aria-label="#384 on GitHub" data-tip="#384 on GitHub"></a> — finished <time datetime="2026-10-20T13:34:23Z" tabindex="0">2026-10-20 13:34:23 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/384">#384: Say what happens to an issue&#39;s tickets when `linewright:designed` is removed from its tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/384" aria-label="#384 on GitHub" data-tip="#384 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/386">#386</a><a class="github" href="https://github.com/tibbe/linewright/issues/386" aria-label="#386 on GitHub" data-tip="#386 on GitHub"></a> · <time datetime="2026-10-20T13:34:23Z" tabindex="0">2026-10-20 13:34:23 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-385">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/385">#385: Write each prompt as the steps its session takes</a><a class="github" href="https://github.com/tibbe/linewright/issues/385" aria-label="#385 on GitHub" data-tip="#385 on GitHub"></a> — finished <time datetime="2026-10-20T13:07:16Z" tabindex="0">2026-10-20 13:07:16 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><svg class="pull-request size-[1em] shrink-0" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="pull request" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="4" cy="3.5" r="1.75"/><circle cx="4" cy="12.5" r="1.75"/><circle cx="12" cy="12.5" r="1.75"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/>
+</svg><a class="link link-hover" href="/items/385">#385: Write each prompt as the steps its session takes</a><a class="github" href="https://github.com/tibbe/linewright/issues/385" aria-label="#385 on GitHub" data-tip="#385 on GitHub"></a></h3>
+<p class="line text-base-content/70">merged · nothing to build · <time datetime="2026-10-20T13:07:16Z" tabindex="0">2026-10-20 13:07:16 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-373">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/373">#373: Spec change: Design every item before it is built, in the stage that cuts it</a><a class="github" href="https://github.com/tibbe/linewright/issues/373" aria-label="#373 on GitHub" data-tip="#373 on GitHub"></a> — 5/5 tickets closed — finished <time datetime="2026-10-20T12:02:46Z" tabindex="0">2026-10-20 12:02:46 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/374">#374: Rename the `tickets` stage to `design` and `linewright:spec-processed` to `linewright:designed`</a><a class="github" href="https://github.com/tibbe/linewright/issues/374" aria-label="#374 on GitHub" data-tip="#374 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/379">#379</a><a class="github" href="https://github.com/tibbe/linewright/issues/379" aria-label="#379 on GitHub" data-tip="#379 on GitHub"></a> · <time datetime="2026-10-20T07:25:56Z" tabindex="0">2026-10-20 07:25:56 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/375">#375: Give the implementer the comments of the item its ticket was cut from</a><a class="github" href="https://github.com/tibbe/linewright/issues/375" aria-label="#375 on GitHub" data-tip="#375 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/380">#380</a><a class="github" href="https://github.com/tibbe/linewright/issues/380" aria-label="#380 on GitHub" data-tip="#380 on GitHub"></a> · <time datetime="2026-10-20T07:37:18Z" tabindex="0">2026-10-20 07:37:18 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/376">#376: Design a spec change before cutting it, with the `software-design` skill and a design prompt</a><a class="github" href="https://github.com/tibbe/linewright/issues/376" aria-label="#376 on GitHub" data-tip="#376 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/381">#381</a><a class="github" href="https://github.com/tibbe/linewright/issues/381" aria-label="#381 on GitHub" data-tip="#381 on GitHub"></a> · <time datetime="2026-10-20T07:59:39Z" tabindex="0">2026-10-20 07:59:39 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/377">#377: Design a readied issue before building it</a><a class="github" href="https://github.com/tibbe/linewright/issues/377" aria-label="#377 on GitHub" data-tip="#377 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/382">#382</a><a class="github" href="https://github.com/tibbe/linewright/issues/382" aria-label="#382 on GitHub" data-tip="#382 on GitHub"></a> · <time datetime="2026-10-20T09:35:32Z" tabindex="0">2026-10-20 09:35:32 UTC</time></p>
+</div>
+</li>
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/378">#378: Cut an issue too big for one session into tickets, under the issue as their tracking issue</a><a class="github" href="https://github.com/tibbe/linewright/issues/378" aria-label="#378 on GitHub" data-tip="#378 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/383">#383</a><a class="github" href="https://github.com/tibbe/linewright/issues/383" aria-label="#383 on GitHub" data-tip="#383 on GitHub"></a> · <time datetime="2026-10-20T12:02:46Z" tabindex="0">2026-10-20 12:02:46 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+<details class="lane mt-2 rounded-box border border-base-300 bg-base-200 px-(--lane-padding) pb-(--lane-padding)" id="lane-365">
+<summary class="lane-head cursor-pointer"><span class="sticky left-(--lane-inset) inline-block max-w-[calc(100cqw-2*var(--lane-inset))] truncate align-top" data-tip-cut><a class="link link-hover" href="/items/365">#365: Spec change: Decide how serve drains, so an upgrade wastes no work</a><a class="github" href="https://github.com/tibbe/linewright/issues/365" aria-label="#365 on GitHub" data-tip="#365 on GitHub"></a> — 3/3 tickets closed — finished <time datetime="2026-10-19T22:11:14Z" tabindex="0">2026-10-19 22:11:14 UTC</time></span></summary><div class="grid grid-cols-(--columns) gap-2">
+<ul class="cell flex flex-col gap-2" aria-label="Triage">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Needs a person">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Ready">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Working">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="In review">
+</ul>
+<ul class="cell flex flex-col gap-2" aria-label="Done">
+<li class="card card-sm border border-base-300 bg-card shadow-sm opacity-75">
+<div class="card-body gap-1">
+<h3 class="card-title line-clamp-2 text-sm" data-tip-cut><a class="link link-hover" href="/items/368">#368: `drain --timeout` turns a drain into a stop at its deadline</a><a class="github" href="https://github.com/tibbe/linewright/issues/368" aria-label="#368 on GitHub" data-tip="#368 on GitHub"></a></h3>
+<p class="line text-base-content/70">closed in <a class="link link-hover" href="/items/371">#371</a><a class="github" href="https://github.com/tibbe/linewright/issues/371" aria-label="#371 on GitHub" data-tip="#371 on GitHub"></a> · <time datetime="2026-10-19T22:11:14Z" tabindex="0">2026-10-19 22:11:14 UTC</time></p>
+</div>
+</li>
+</ul>
+</div>
+</details>
+</details>
+</div>
+</section>
+</main>
+</div>
+<div class="drawer-side">
+<label for="navigation" class="drawer-overlay" aria-label="Close the navigation"></label>
+<nav class="flex min-h-full w-64 flex-col gap-2 bg-base-200 p-4 lg:max-2xl:w-20 lg:max-2xl:items-center lg:max-2xl:px-1" aria-label="Linewright"><a class="repo link link-hover flex items-center gap-2 font-semibold lg:max-2xl:justify-center" href="https://github.com/tibbe/linewright" data-tip="tibbe/linewright" data-tip-cut><div class="avatar"><div class="size-6 rounded-full lg:max-2xl:size-8"><img src="https://github.com/tibbe.png?size=64" width="32" height="32" alt=""></div></div><span class="lg:max-2xl:sr-only">tibbe/linewright</span></a>
+<ul class="menu w-full p-0"><li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="/"><svg class="size-5 shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M6 2.75v10.5M10 2.75v10.5"/></svg><span>Board</span></a></li><li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="/runs"><svg class="size-5 shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M4.75 6l2 2-2 2M8.75 10h2.5"/></svg><span>Runs</span></a></li><li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="/automations"><svg class="size-5 shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.25 1.75L3.75 9h4.25l-1.25 5.25L12.25 7H8z"/></svg><span>Automations</span></a></li><li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="/server"><svg class="size-5 shrink-0" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.25" width="12" height="4.75" rx="1"/><rect x="2" y="9" width="12" height="4.75" rx="1"/><path d="M4.75 4.625h.01M4.75 11.375h.01"/></svg><span>Server</span></a></li>
+</ul>
+</nav>
+</div>
+</div><div id="tip" popover="manual" role="tooltip" class="tooltip tooltip-open tooltip-top fixed inset-auto m-0 overflow-visible border-0 bg-transparent p-0 pointer-events-none not-open:hidden before:pointer-events-auto after:pointer-events-auto" data-tip=""></div>
+</body>
+</html>

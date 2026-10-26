@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway (#642): the live board, snapshotted, as specced
+     (left) beside a candidate (right). s cycles the candidate's status
+     colours, f its surfaces, t the theme, v one pane or two. Serve the
+     repository root and open /docs/prototypes/palette/. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE · palette</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; }
+  #views { display: flex; height: 100%; gap: 4px; }
+  #views figure { margin: 0; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #views figcaption { font: 600 13px system-ui, sans-serif; color: #fff; padding: 4px 8px; }
+  #views iframe { flex: 1; border: 0; width: 100%; }
+  #proto { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 9; display: flex; gap: 6px; align-items: center;
+    padding: 6px 10px; border-radius: 99px; background: #000; color: #fff; font: 13px system-ui, sans-serif; box-shadow: 0 0 0 1px #fff4, 0 8px 30px #0008; white-space: nowrap; }
+  #proto button { background: #333; color: #fff; border: 0; border-radius: 99px; padding: 4px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="views"></div>
+<div id="proto">
+  <button data-k="status"></button><button data-k="surfaces"></button><button data-k="theme"></button><button data-k="view"></button>
+</div>
+<script>
+const OPTS = {
+  status: ["q10", "daisyui", "tw"],
+  surfaces: ["radix", "lifted"],
+  theme: ["dark", "light"],
+  view: ["split", "single"],
+};
+const NAMES = {
+  daisyui: "daisyUI statuses, quiet in neutral (as specced)",
+  q10: "daisyUI statuses, quiet in Muted (Q10)",
+  tw: "Tailwind 700/400 statuses",
+  lifted: "Lifted surfaces (as specced)",
+  radix: "Radix Slate surfaces",
+};
+const KEYS = { s: "status", f: "surfaces", t: "theme", v: "view" };
+const q = new URLSearchParams(location.search);
+const st = Object.fromEntries(Object.entries(OPTS).map(([k, o]) => [k, o.includes(q.get(k)) ? q.get(k) : o[0]]));
+
+function pane(status, surfaces) {
+  return `<figure><figcaption>${NAMES[status]} · ${NAMES[surfaces]} · ${st.theme}</figcaption>` +
+    `<iframe src="board.html?status=${status}&surfaces=${surfaces}&theme=${st.theme}"></iframe></figure>`;
+}
+function render() {
+  document.getElementById("views").innerHTML =
+    (st.view === "split" ? pane("daisyui", "lifted") : "") + pane(st.status, st.surfaces);
+  for (const b of document.querySelectorAll("#proto button")) {
+    const k = b.dataset.k, key = Object.keys(KEYS).find(x => KEYS[x] === k);
+    b.textContent = `${k}: ${NAMES[st[k]] ? st[k] : st[k]} (${key})`;
+  }
+  history.replaceState(null, "", "?" + new URLSearchParams(st));
+}
+function cycle(k) { const o = OPTS[k]; st[k] = o[(o.indexOf(st[k]) + 1) % o.length]; render(); }
+for (const b of document.querySelectorAll("#proto button")) b.onclick = () => cycle(b.dataset.k);
+addEventListener("keydown", e => { if (KEYS[e.key]) cycle(KEYS[e.key]); });
+render();
+</script>
+</body>
+</html>

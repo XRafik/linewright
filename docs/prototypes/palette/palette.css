@@ -1,0 +1,66 @@
+/* PROTOTYPE, throwaway (#642). Three switches on <html>:
+   data-status:   daisyui (as specced: paused or queued in `neutral`)
+                  | q10 (daisyUI's statuses; paused or queued in Muted)
+                  | tw (Tailwind 700 light / 400 dark, the earlier proposal)
+   data-surfaces: lifted (as specced) | radix (snapped to Radix Slate steps:
+                  light Page 2, Lane 3, Card white, Border 6, Muted 11, Text 12;
+                  dark Lane 2, Page 3, Card 5, Border 6, Muted 11, Text 12)
+   data-theme:    light | dark */
+
+html[data-theme="light"] { --muted: #5d636d; }
+html[data-theme="dark"] { --muted: #a6abb4; }
+
+html[data-surfaces="radix"][data-theme="light"] {
+  --color-base-100: #f9f9fb;
+  --color-base-200: #f0f0f3;
+  --color-base-300: #d9d9e0;
+  --color-base-content: #1c2024;
+  --card: #ffffff;
+  --muted: #60646c;
+}
+
+html[data-surfaces="radix"][data-theme="dark"] {
+  --color-base-100: #212225;
+  --color-base-200: #18191b;
+  --color-base-300: #363a3f;
+  --color-base-content: #edeef0;
+  --card: #2e3135;
+  --muted: #b0b4ba;
+}
+
+/* Q10: paused or queued, a mark, in Muted; `neutral` stays daisyUI's. */
+html[data-status="q10"] .toned[class*="--color-neutral"] {
+  --tone: var(--muted);
+}
+
+html[data-status="tw"][data-theme="light"] {
+  --color-error: oklch(51.4% 0.222 16.935);
+  --color-error-content: #ffffff;
+  --color-warning: oklch(55.5% 0.163 48.998);
+  --color-warning-content: #ffffff;
+  --color-info: oklch(45.7% 0.24 277.023);
+  --color-info-content: #ffffff;
+  --color-success: oklch(50.8% 0.118 165.612);
+  --color-success-content: #ffffff;
+}
+
+html[data-status="tw"][data-theme="dark"] {
+  --color-error: oklch(71.2% 0.194 13.428);
+  --color-error-content: oklch(27.1% 0.105 12.094);
+  --color-warning: oklch(82.8% 0.189 84.429);
+  --color-warning-content: oklch(27.9% 0.077 45.635);
+  --color-info: oklch(67.3% 0.182 276.935);
+  --color-info-content: oklch(25.7% 0.09 281.288);
+  --color-success: oklch(76.5% 0.177 163.223);
+  --color-success-content: oklch(26.2% 0.051 172.552);
+}
+
+html[data-status="tw"] .toned[class*="--color-neutral"] {
+  --tone: var(--muted);
+}
+
+/* The components panel: what the UI draws from daisyUI, on each surface. */
+#parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 0.75rem; }
+#parts .surface { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+#parts .row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+#parts h4 { font-weight: 600; font-size: 0.8rem; opacity: 0.7; }
