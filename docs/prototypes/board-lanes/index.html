@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE, throwaway: what should the board's lanes look like?
+  Five variants of the board (templates/board.html), switchable with
+  `?variant=` and the floating bar at the bottom, each with a choice of
+  palette, status marking and lane head. Mock data, no server: open this
+  file in a browser. It borrows the app's compiled stylesheet
+  (assets/linewright.css) for the page chrome and daisyUI's themes.
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Board · lane prototype</title>
+<link rel="stylesheet" href="../../../assets/linewright.css">
+<style>
+/* ---- Palettes: semantic surfaces, set from JS per palette and theme. ---- */
+:root {
+  --page: var(--color-base-100);
+  --sunken: var(--color-base-200);
+  --raised: var(--color-base-100);
+  --line: var(--color-base-300);
+  --fg: var(--color-base-content);
+  --muted: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+  --accent: var(--color-primary);
+  --raise-shadow: none;
+}
+[data-theme=dark] {
+  --st-running: #7c8cff; --st-attention: #f2b33d; --st-failed: #f2555a;
+  --st-held: #a1a7b3; --st-done: #4cb782; --st-queued: #8a8f98; --st-neutral: #8a8f98;
+}
+[data-theme=light] {
+  --st-running: #4f5bd5; --st-attention: #b97a00; --st-failed: #d1373c;
+  --st-held: #6b7280; --st-done: #2f9e6b; --st-queued: #8a8f98; --st-neutral: #8a8f98;
+}
+[data-s=running] { --s: var(--st-running); }
+[data-s=attention] { --s: var(--st-attention); }
+[data-s=failed] { --s: var(--st-failed); }
+[data-s=held] { --s: var(--st-held); }
+[data-s=done] { --s: var(--st-done); }
+[data-s=queued] { --s: var(--st-queued); }
+[data-s=neutral] { --s: var(--st-neutral); }
+
+body { background: var(--page); color: var(--fg); }
+#board { --col-min: 200px; }
+#board a { color: inherit; text-decoration: none; }
+#board a:hover { text-decoration: underline; }
+.muted { color: var(--muted); }
+.cols { display: grid; grid-template-columns: repeat(6, minmax(var(--col-min), 1fr)); gap: 8px; }
+.pr-icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.15em; margin-right: 0.3em; flex-shrink: 0; }
+.ttl { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+.caret { display: inline-block; width: 1em; transition: transform .15s; color: var(--muted); font-size: .7em; }
+details:not([open]) > summary .caret { transform: rotate(-90deg); }
+.sticky-heads { position: sticky; top: 0; z-index: 20; background: var(--page); }
+.lh { position: sticky; z-index: 10; }
+
+/* ---- Status marks on cards (the "Status" selector). ---- */
+.mark-dot .card[data-s] .line::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 99px; background: var(--s); margin-right: 6px; vertical-align: 1px; }
+.mark-dot .card[data-s=neutral] .line::before, .mark-dot .card[data-s=queued] .line::before { background: transparent; border: 1.5px solid var(--s); width: 7px; height: 7px; box-sizing: border-box; }
+.mark-chip .card:not([data-s=neutral]) .line { display: inline-block; width: fit-content; padding: 1px 8px; border-radius: 6px; background: color-mix(in oklab, var(--s) 16%, transparent); color: color-mix(in oklab, var(--s) 85%, var(--fg)); }
+.mark-edge .card:is([data-s=running],[data-s=attention],[data-s=failed],[data-s=held]) { box-shadow: inset 3px 0 0 var(--s), var(--raise-shadow); }
+.mark-bar .card:is([data-s=running],[data-s=attention],[data-s=failed],[data-s=held],[data-s=done]) { border-bottom: 3px solid var(--s) !important; }
+.mark-tint .card:not([data-s=neutral]):not([data-s=queued]) { background: color-mix(in oklab, var(--s) 13%, var(--raised)) !important; border-color: color-mix(in oklab, var(--s) 35%, transparent) !important; }
+.mark-tint .card[data-s=failed] { background-image: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in oklab, var(--st-failed) 10%, transparent) 8px 16px) !important; }
+.mark-pulse .card .pulse { display: inline-flex; }
+.pulse { display: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 99px; background: color-mix(in oklab, var(--s) 18%, transparent); color: var(--s); flex-shrink: 0; }
+.mark-pulse .card[data-s=neutral] .pulse, .mark-pulse .card[data-s=queued] .pulse { opacity: .5; }
+
+/* ---- Lane heads (the "Lane head" selector). ---- */
+.head-wash .lh { background-image: linear-gradient(90deg, color-mix(in oklab, var(--s) 16%, transparent), transparent 60%); }
+.head-band .lh { background-color: color-mix(in oklab, var(--s) 26%, var(--sunken)) !important; box-shadow: inset 4px 0 0 var(--s); }
+.head-dot .lh .sdot, .head-wash .lh .sdot, .head-band .lh .sdot { display: inline-block; }
+.sdot { display: none; width: 9px; height: 9px; border-radius: 99px; background: var(--s); flex-shrink: 0; box-shadow: 0 0 0 3px color-mix(in oklab, var(--s) 22%, transparent); }
+.lh .state { font-size: 12px; font-weight: 500; color: var(--s); white-space: nowrap; }
+.head-plain .lh .state { display: none; }
+
+/* ======== A: Current ======== */
+.v-current { padding: 0 2px; }
+.v-current .heads { height: 2rem; align-items: center; padding: 0 9px; font-weight: 600; }
+.v-current .lane { margin-top: 12px; border: 1px solid var(--line); background: var(--sunken); border-radius: var(--radius-box, 1rem); padding: 0 8px 8px; }
+.v-current .lh { top: 2rem; background-color: var(--sunken); padding-top: 8px; min-height: 2.5rem; font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.v-current .cell { display: flex; flex-direction: column; gap: 8px; }
+.v-current .card { background: var(--raised); border-radius: var(--radius-box, 1rem); padding: 12px 16px; border: 1px solid transparent; box-shadow: var(--raise-shadow); }
+.v-current .card .ttl { font-weight: 600; font-size: 14px; }
+.v-current .card .line { font-size: 14px; color: var(--muted); }
+.v-current .fin { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.v-current .fin > summary { font-weight: 600; }
+
+/* ======== B: Linear ======== */
+.v-linear { position: relative; padding: 0 12px 24px; font-size: 13px; }
+.v-linear .wells { position: absolute; inset: 0 12px 0 12px; z-index: 0; pointer-events: none; }
+.v-linear .wells > div { background: var(--sunken); border-radius: 10px 10px 0 0; }
+.v-linear .heads { height: 44px; align-items: center; padding: 0 12px; background: var(--page); }
+.v-linear .heads > div { font-weight: 500; display: flex; gap: 8px; align-items: center; }
+.v-linear .heads .n { color: var(--muted); font-weight: 400; }
+.v-linear .lane { position: relative; z-index: 1; }
+.v-linear .lh { top: 44px; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; margin: 6px 0 8px; border-radius: 8px; background-color: color-mix(in oklab, var(--sunken) 55%, var(--raised)); border: 1px solid color-mix(in oklab, var(--line) 60%, transparent); font-weight: 500; }
+.v-linear .lh .n { color: var(--muted); font-weight: 400; }
+.v-linear .cols { padding: 0 6px; gap: 20px; }
+.v-linear .cell { display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; }
+.v-linear .card { background: var(--raised); border-radius: 8px; padding: 12px 14px; border: 1px solid color-mix(in oklab, var(--line) 70%, transparent); box-shadow: var(--raise-shadow); display: flex; flex-direction: column; gap: 6px; }
+.v-linear .card .top { display: flex; gap: 8px; align-items: flex-start; }
+.v-linear .card .ttl { font-weight: 500; flex: 1; }
+.v-linear .card .num { color: var(--muted); font-size: 12px; }
+.v-linear .card .line { color: var(--muted); font-size: 12.5px; }
+.v-linear .fin { position: relative; z-index: 1; margin-top: 18px; }
+.v-linear .fin > summary { padding: 8px 12px; color: var(--muted); font-weight: 500; }
+
+/* ======== C: DealFlow ======== */
+.v-dealflow { padding: 4px 8px 24px; font-size: 13px; }
+.v-dealflow .panel { background: var(--sunken); border: 1px solid var(--line); border-radius: 18px; padding: 0 18px 18px; min-width: fit-content; }
+.v-dealflow .ptitle { display: flex; gap: 10px; align-items: baseline; padding: 18px 2px 4px; }
+.v-dealflow .ptitle b { font-size: 17px; font-weight: 600; }
+.v-dealflow .heads { height: 44px; align-items: center; background: var(--sunken); padding: 0 1px; gap: 12px; }
+.v-dealflow .heads > div { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; padding: 0 12px; }
+.v-dealflow .heads .n { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.v-dealflow .heads i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+.v-dealflow .lane { margin-top: 14px; }
+.v-dealflow .lh { top: 44px; display: flex; align-items: center; gap: 10px; padding: 8px 4px 10px; background-color: var(--sunken); font-weight: 600; font-size: 14px; border-radius: 8px; }
+.v-dealflow .lh .meta { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.v-dealflow .cols { gap: 12px; }
+.v-dealflow .cell { border: 1px solid var(--line); background: color-mix(in oklab, var(--sunken) 50%, var(--raised)); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-height: 58px; }
+.v-dealflow .cell:empty { background: transparent; border-style: dashed; border-color: color-mix(in oklab, var(--line) 70%, transparent); }
+.v-dealflow .card { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--raise-shadow); }
+.v-dealflow .card .ttl { font-weight: 500; }
+.v-dealflow .card .bot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.v-dealflow .card .num { font-size: 10.5px; padding: 2px 6px; border-radius: 99px; background: color-mix(in oklab, var(--accent) 22%, transparent); color: color-mix(in oklab, var(--accent) 80%, var(--fg)); }
+.v-dealflow .card .line { color: var(--muted); font-size: 12px; }
+.v-dealflow .fin { margin-top: 18px; }
+.v-dealflow .fin > summary { font-weight: 600; padding: 6px 4px; }
+
+/* ======== D: My pick ======== */
+.v-pick { padding: 0 6px 24px; font-size: 13.5px; }
+.v-pick .heads { height: 40px; align-items: center; padding: 0 9px; gap: 10px; }
+.v-pick .heads > div { font-weight: 600; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.v-pick .heads .n { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.v-pick .lane { margin-top: 10px; background: var(--sunken); border-radius: 12px; padding: 0 8px 8px; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--line) 55%, transparent); }
+.v-pick .lh { top: 40px; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px; margin: 0 -8px 6px; border-radius: 12px 12px 0 0; background-color: var(--sunken); font-weight: 600; }
+.v-pick .lh .meta { color: var(--muted); font-weight: 400; }
+.v-pick .lh .state { margin-left: auto; }
+.v-pick .cols { gap: 10px; }
+.v-pick .cell { display: flex; flex-direction: column; gap: 8px; }
+.v-pick .card { background: var(--raised); border-radius: 8px; padding: 10px 12px; box-shadow: var(--raise-shadow); border: 1px solid color-mix(in oklab, var(--line) 50%, transparent); display: flex; flex-direction: column; gap: 4px; }
+.v-pick .card[data-s=done] { opacity: .78; }
+.v-pick .card .ttl { font-weight: 550; }
+.v-pick .card .line { color: var(--muted); font-size: 12.5px; }
+.v-pick .fin { margin-top: 16px; }
+.v-pick .fin > summary { font-weight: 600; padding: 6px 4px; color: var(--muted); }
+
+/* ======== E: Jira wells ======== */
+.v-jira { padding: 0 6px 24px; font-size: 13.5px; }
+.v-jira .heads { height: 38px; align-items: center; gap: 6px; }
+.v-jira .heads > div { font-size: 11.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 0 10px; background: var(--sunken); height: 30px; display: flex; align-items: center; gap: 6px; border-radius: 6px 6px 0 0; }
+.v-jira .cols { gap: 6px; }
+.v-jira .lane { margin-top: 4px; }
+.v-jira .lh { top: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 6px; background-color: var(--page); font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.v-jira .lh .meta { color: var(--muted); font-weight: 400; }
+.v-jira .lh .state { margin-left: auto; }
+.v-jira .cell { background: var(--sunken); border-radius: 6px; padding: 6px; min-height: 64px; display: flex; flex-direction: column; gap: 6px; }
+.v-jira .card { background: var(--raised); border-radius: 4px; padding: 10px 12px; box-shadow: var(--raise-shadow); border: 1px solid color-mix(in oklab, var(--line) 40%, transparent); display: flex; flex-direction: column; gap: 6px; }
+.v-jira .card .line { color: var(--muted); font-size: 12.5px; }
+.v-jira .card .foot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+.v-jira .fin { margin-top: 16px; }
+.v-jira .fin > summary { font-weight: 600; padding: 6px 4px; }
+
+/* ---- The prototype's own switcher: not part of the design. ---- */
+#proto { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 99px; background: #111; color: #fff; font: 13px/1 system-ui, sans-serif; box-shadow: 0 8px 30px #0007, 0 0 0 1px #fff3; white-space: nowrap; }
+#proto button, #proto select { background: #2a2a2a; color: #fff; border: 1px solid #555; border-radius: 99px; padding: 5px 10px; font: inherit; cursor: pointer; }
+#proto button:hover { background: #3a3a3a; }
+#proto .lbl { min-width: 190px; text-align: center; font-weight: 600; }
+#proto .sep { width: 1px; height: 20px; background: #555; }
+#proto small { color: #aaa; }
+#state { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); z-index: 100; font: 11.5px/1.3 ui-monospace, monospace; color: #ddd; background: #111d; padding: 4px 10px; border-radius: 6px; }
+</style>
+</head>
+<body class="bg-base-100 text-base-content">
+<div class="drawer lg:drawer-open">
+<input id="navigation" type="checkbox" class="drawer-toggle">
+<div class="drawer-content isolate min-w-0 flex h-dvh flex-col">
+<main class="flex min-h-0 flex-1 flex-col px-2 py-4">
+<section id="board" class="scroll-box"></section>
+</main>
+</div>
+<div class="drawer-side">
+<nav class="flex min-h-full w-64 flex-col gap-2 bg-base-200 p-4 lg:max-2xl:w-20 lg:max-2xl:items-center lg:max-2xl:px-1" aria-label="Linewright">
+<a class="repo link link-hover flex items-center gap-2 font-semibold lg:max-2xl:justify-center" href="#"><div class="avatar"><div class="size-6 rounded-full lg:max-2xl:size-8"><div style="width:100%;height:100%;background:linear-gradient(135deg,#6d5efc,#3cc8b4)"></div></div></div><span class="lg:max-2xl:sr-only">benetics/linewright</span></a>
+<ul class="menu w-full p-0">
+<li><a class="menu-active lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="#"><svg class="size-5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M6 2.75v10.5M10 2.75v10.5"/></svg><span>Board</span></a></li>
+<li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="#"><svg class="size-5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M4.75 6l2 2-2 2M8.75 10h2.5"/></svg><span>Runs</span></a></li>
+<li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="#"><svg class="size-5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.25 1.75L3.75 9h4.25l-1.25 5.25L12.25 7H8z"/></svg><span>Automations</span></a></li>
+<li><a class="lg:max-2xl:flex lg:max-2xl:flex-col lg:max-2xl:items-center lg:max-2xl:gap-1 lg:max-2xl:px-0 lg:max-2xl:text-xs" href="#"><svg class="size-5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.25" width="12" height="4.75" rx="1"/><rect x="2" y="9" width="12" height="4.75" rx="1"/><path d="M4.75 4.625h.01M4.75 11.375h.01"/></svg><span>Server</span></a></li>
+</ul>
+</nav>
+</div>
+</div>
+
+<div id="state"></div>
+<div id="proto">
+<button id="prev" title="Previous variant (←)">←</button>
+<span class="lbl" id="vlabel"></span>
+<button id="next" title="Next variant (→)">→</button>
+<span class="sep"></span>
+<button id="theme" title="Toggle light/dark (t)"></button>
+<small>Palette</small><select id="palette"></select>
+<small>Status</small><select id="mark"></select>
+<small>Lane head</small><select id="head"></select>
+</div>
+
+<script>
+// ---------- Mock board: Linewright's columns and card wording. ----------
+const COLUMNS = ["Triage", "Needs a person", "Ready", "Working", "In review", "Done"];
+const STAGE_DOTS = ["#8a8f98", "#f2b33d", "#5e9bff", "#9b7bff", "#3cc8b4", "#4cb782"];
+const c = (num, title, s, line, pr = false) => ({ num, title, s, line, pr });
+const LANES = [
+  { num: 501, title: "Spec settings per stage and briefs from the repository", tickets: [2, 5], cells: {
+    2: [c(507, "Read the briefs from the repository's default branch", "queued", "queued")],
+    3: [c(505, "Model and effort settings per stage", "running", "implementation · 14m")],
+    4: [c(512, "Parse the stage settings from linewright.toml", "running", "#512 by linewright · checks running", true)],
+    5: [c(502, "Settings schema for stages", "done", "merged · 2h ago", true), c(504, "Document the stage settings", "done", "closed · 1h ago")] } },
+  { num: 488, title: "Trust only the host's certificate authorities", cells: {
+    4: [c(489, "Use the platform verifier in the GitHub client", "failed", "#489 by linewright · checks failed", true)] } },
+  { num: 520, title: "Redact the header values in the harness's header variables", cells: {
+    1: [c(520, "Redact the header values in the harness's header variables", "attention", "decision needed")] } },
+  { num: 515, title: "Lane UI, take 2", tickets: [0, 3], cells: {
+    0: [c(516, "Prototype lane treatments", "running", "triage · 2m"), c(517, "Pick a dark palette", "queued", "queued")],
+    1: [c(518, "Spec the board's surfaces", "attention", "asked tibbe")] } },
+  { num: 476, title: "Release automation", tickets: [3, 4], cells: {
+    2: [c(479, "Sign the release artefacts", "held", "paused for the usage limit")],
+    4: [c(481, "Publish the image on tag", "failed", "#481 by tibbe · conflicts", true)],
+    5: [c(477, "Changelog from commits", "done", "merged · 1d ago", true), c(478, "Version bump script", "done", "merged · 1d ago", true), c(480, "Release checklist", "done", "closed · 20h ago")] } },
+  { num: 530, title: "Flaky webhook replay test", cells: {
+    0: [c(530, "Flaky webhook replay test", "failed", "stalled")] } },
+  { num: 533, title: "Running guide: HTTPS behind a proxy", cells: {
+    2: [c(533, "Running guide: HTTPS behind a proxy", "neutral", "unassigned")] } },
+  { num: 540, title: "Theme colours in OKLCH", cells: {
+    1: [c(540, "Theme colours in OKLCH", "held", "blocked by #515")] } },
+];
+const FINISHED = [
+  { num: 460, title: "Release 0.6.0", finished: "2d ago", cells: { 5: [c(461, "Tag and publish 0.6.0", "done", "merged · 2d ago", true)] } },
+  { num: 452, title: "Trust only the host's certificate authorities (first pass)", finished: "4d ago", cells: { 5: [c(453, "Drop the bundled roots", "done", "merged · 4d ago", true)] } },
+];
+const RANK = ["failed", "attention", "running", "held", "queued", "done", "neutral"];
+const STATE_WORD = { failed: "Failing", attention: "Needs a person", running: "Running", held: "Paused", queued: "Queued", done: "Done", neutral: "Waiting" };
+function laneState(l) {
+  const ss = Object.values(l.cells).flat().map(x => x.s);
+  return RANK.find(r => ss.includes(r)) ?? "neutral";
+}
+const cardsIn = (l) => Object.values(l.cells).flat().length;
+const colCount = (i) => LANES.reduce((n, l) => n + (l.cells[i]?.length ?? 0), 0);
+
+// ---------- Palettes: page, sunken (lane/well), raised (card), line, fg, muted, accent. ----------
+const P = (page, sunken, raised, line, fg, muted, accent, shadow) => ({ page, sunken, raised, line, fg, muted, accent, shadow });
+const DARK_SHADOW = "0 1px 1px #01040480, 0 0 1px #01040480";
+const LIGHT_SHADOW = "0 1px 1px #1e1f2124, 0 0 1px #1e1f214f";
+const PALETTES = {
+  daisy: { name: "daisyUI (today)", dark: null, light: null },
+  linear: { name: "Linear", dark: P("#0f1011", "#141518", "#1c1d21", "#27282d", "#e3e4e8", "#8a8f98", "#7170ff", "none"),
+    light: P("#ffffff", "#f8f8f9", "#f0f0f3", "#e4e5e9", "#1b1c1f", "#6b6f76", "#5e6ad2", "none") },
+  dealflow: { name: "DealFlow", dark: P("#0b0c0f", "#121318", "#191a20", "#262832", "#ececf1", "#8b8d98", "#9b7bff", "none"),
+    light: P("#f4f4f7", "#ffffff", "#f9f9fb", "#e6e6ee", "#18181c", "#6b6c76", "#7c5cff", LIGHT_SHADOW) },
+  lifted: { name: "Lifted slate", dark: P("#202226", "#191a1d", "#2d3035", "#3d4047", "#eceef2", "#a6abb4", "#8b96ff", "0 1px 2px #0006, 0 0 0 1px #ffffff0a"),
+    light: P("#f7f8fa", "#eceef2", "#ffffff", "#d8dbe2", "#1c2024", "#5d636d", "#4f5bd5", LIGHT_SHADOW) },
+  slate: { name: "Radix slate", dark: P("#18191b", "#111113", "#232528", "#363a3f", "#edeef0", "#b0b4ba", "#7c8cff", DARK_SHADOW),
+    light: P("#fcfcfd", "#f0f0f3", "#ffffff", "#d9d9e0", "#1c2024", "#60646c", "#4f5bd5", LIGHT_SHADOW) },
+  dimmed: { name: "GitHub dimmed", dark: P("#212830", "#151b23", "#262c36", "#3d444d", "#d1d7e0", "#9198a1", "#478be6", "0 1px 0 #0104094d"),
+    light: P("#ffffff", "#f6f8fa", "#ffffff", "#d1d9e0", "#1f2328", "#59636e", "#0969da", "0 1px 0 #1f23280a") },
+  carbon: { name: "Carbon g90 / g10", dark: P("#262626", "#393939", "#525252", "#6f6f6f", "#f4f4f4", "#c6c6c6", "#78a9ff", "none"),
+    light: P("#f4f4f4", "#ffffff", "#f4f4f4", "#e0e0e0", "#161616", "#525252", "#0f62fe", "none") },
+  atlassian: { name: "Atlassian", dark: P("#1f1f21", "#18191a", "#242528", "#3d3f43", "#cecfd2", "#a9abaf", "#579dff", DARK_SHADOW),
+    light: P("#ffffff", "#f8f8f8", "#ffffff", "#e4e6ea", "#292a2e", "#505258", "#0c66e4", LIGHT_SHADOW) },
+};
+const MARKS = { none: "None", dot: "Dot before the line", pulse: "Status icon (Linear)", chip: "Tinted chip (DealFlow)", edge: "Left edge (Azure)", bar: "Bottom bar (Ashby)", tint: "Card tint (Jenkins)" };
+const HEADS = { plain: "Plain", dot: "State dot", wash: "Fading wash (Linear)", band: "Solid band (Azure)" };
+
+// ---------- Shared bits. ----------
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const PR = `<svg class="pr-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="3.5" r="1.75"/><circle cx="4" cy="12.5" r="1.75"/><circle cx="12" cy="12.5" r="1.75"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/></svg>`;
+const ISSUE = `<svg class="pr-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="8" r="5.75"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>`;
+const PULSE = `<span class="pulse"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8h3l2-4.5 3 9 2-4.5h3"/></svg></span>`;
+const link = (num, title) => `<a href="#">#${num}: ${esc(title)}</a>`;
+const laneHeadText = l => link(l.num, l.title)
+  + (l.tickets ? ` <span class="meta muted">— ${l.tickets[0]}/${l.tickets[1]} tickets closed</span>` : "")
+  + (l.finished ? ` <span class="meta muted">— finished ${l.finished}</span>` : "");
+function lanes(renderLane) {
+  return LANES.map(l => renderLane(l, false)).join("");
+}
+function finished(renderLane) {
+  return `<details class="fin"><summary><span class="caret">▼</span> ${FINISHED.length} finished lanes</summary>${FINISHED.map(l => renderLane(l, true)).join("")}</details>`;
+}
+// A lane box as a section or, finished, a fold whose summary is its head.
+const box = (folded, cls, head, body, s) => folded
+  ? `<details class="${cls}" data-s="${s}"><summary class="lh" data-s="${s}">${head}</summary>${body}</details>`
+  : `<section class="${cls}" data-s="${s}"><div class="lh" data-s="${s}">${head}</div>${body}</section>`;
+
+// ---------- Variants. ----------
+const VARIANTS = [
+  { key: "A", name: "Today", cls: "v-current", palette: "daisy", mark: "none", head: "plain", render() {
+    const card = x => `<div class="card" data-s="${x.s}"><div class="ttl">${x.pr ? PR : ""}${link(x.num, x.title)}</div><div class="line">${esc(x.line)}</div></div>`;
+    const lane = (l, folded) => box(folded, "lane", `${folded ? '<span class="caret">▼</span>' : ""}<span class="sdot"></span><span>${laneHeadText(l)}</span><span class="state">${STATE_WORD[laneState(l)]}</span>`,
+      `<div class="cols">${COLUMNS.map((_, i) => `<div class="cell">${(l.cells[i] ?? []).map(card).join("")}</div>`).join("")}</div>`, laneState(l));
+    return `<div class="sticky-heads cols heads">${COLUMNS.map(n => `<div>${n}</div>`).join("")}</div>${lanes(lane)}${finished(lane)}`;
+  } },
+  { key: "B", name: "Linear", cls: "v-linear", palette: "linear", mark: "pulse", head: "wash", render() {
+    const card = x => `<div class="card" data-s="${x.s}"><div class="top">${x.pr ? PR : ISSUE}<div class="ttl"><a href="#">${esc(x.title)}</a></div>${PULSE}</div><div class="line">${esc(x.line)}</div><div class="num">#${x.num}</div></div>`;
+    const lane = (l, folded) => box(folded, "lane", `<span class="caret">▼</span><span class="sdot"></span><span>${laneHeadText(l)}</span><span class="n">${cardsIn(l)}</span><span class="state" style="margin-left:auto">${STATE_WORD[laneState(l)]}</span>`,
+      `<div class="cols">${COLUMNS.map((_, i) => `<div class="cell">${(l.cells[i] ?? []).map(card).join("")}</div>`).join("")}</div>`, laneState(l));
+    return `<div class="wells cols" style="gap:20px;padding:0 6px">${COLUMNS.map(() => "<div></div>").join("")}</div>
+      <div class="sticky-heads cols heads" style="gap:20px;padding:0 18px">${COLUMNS.map((n, i) => `<div>${n}<span class="n">${colCount(i)}</span></div>`).join("")}</div>${lanes(lane)}${finished(lane)}`;
+  } },
+  { key: "C", name: "DealFlow", cls: "v-dealflow", palette: "dealflow", mark: "chip", head: "dot", render() {
+    const card = x => `<div class="card" data-s="${x.s}"><div class="ttl">${x.pr ? PR : ""}<a href="#">${esc(x.title)}</a></div><div class="bot"><span class="num">#${x.num}</span><span class="line">${esc(x.line)}</span></div></div>`;
+    const lane = (l, folded) => box(folded, "lane", `${folded ? '<span class="caret">▼</span>' : ""}<span class="sdot"></span><span>${laneHeadText(l).replace(/<span class="meta muted">.*<\/span>/, "")}</span><span class="state">${STATE_WORD[laneState(l)]}</span><span class="meta">${cardsIn(l)} cards${l.tickets ? ` · ${l.tickets[0]}/${l.tickets[1]} tickets` : ""}${l.finished ? ` · finished ${l.finished}` : ""}</span>`,
+      `<div class="cols">${COLUMNS.map((_, i) => `<div class="cell">${(l.cells[i] ?? []).map(card).join("")}</div>`).join("")}</div>`, laneState(l));
+    return `<div class="panel"><div class="ptitle"><b>Board</b><span class="muted">${LANES.length} lanes · ${LANES.reduce((n, l) => n + cardsIn(l), 0)} cards</span></div>
+      <div class="sticky-heads cols heads">${COLUMNS.map((n, i) => `<div><i style="background:${STAGE_DOTS[i]}"></i>${n}<span class="n">${colCount(i)}</span></div>`).join("")}</div>${lanes(lane)}${finished(lane)}</div>`;
+  } },
+  { key: "D", name: "My pick", cls: "v-pick", palette: "lifted", mark: "edge", head: "wash", render() {
+    const card = x => `<div class="card" data-s="${x.s}"><div class="ttl">${x.pr ? PR : ""}${link(x.num, x.title)}</div><div class="line">${esc(x.line)}</div></div>`;
+    const lane = (l, folded) => box(folded, "lane", `${folded ? '<span class="caret">▼</span>' : ""}<span class="sdot"></span><span>${laneHeadText(l)}</span><span class="state">${STATE_WORD[laneState(l)]}</span>`,
+      `<div class="cols">${COLUMNS.map((_, i) => `<div class="cell">${(l.cells[i] ?? []).map(card).join("")}</div>`).join("")}</div>`, laneState(l));
+    return `<div class="sticky-heads cols heads">${COLUMNS.map((n, i) => `<div>${n}<span class="n">${colCount(i)}</span></div>`).join("")}</div>${lanes(lane)}${finished(lane)}`;
+  } },
+  { key: "E", name: "Jira wells", cls: "v-jira", palette: "atlassian", mark: "bar", head: "plain", render() {
+    const card = x => `<div class="card" data-s="${x.s}"><div>${esc(x.title)}</div><div class="line">${esc(x.line)}</div><div class="foot"><span>${x.pr ? PR : ISSUE}<a href="#">#${x.num}</a></span></div></div>`;
+    const lane = (l, folded) => box(folded, "lane", `<span class="caret">▼</span><span class="sdot"></span><span>${laneHeadText(l)}</span><span class="meta">(${cardsIn(l)})</span><span class="state">${STATE_WORD[laneState(l)]}</span>`,
+      `<div class="cols">${COLUMNS.map((_, i) => `<div class="cell">${(l.cells[i] ?? []).map(card).join("")}</div>`).join("")}</div>`, laneState(l));
+    return `<div class="sticky-heads cols heads">${COLUMNS.map((n, i) => `<div>${n} <span>${colCount(i)}</span></div>`).join("")}</div>${lanes(lane)}${finished(lane)}`;
+  } },
+];
+
+// ---------- Switcher. ----------
+const params = new URLSearchParams(location.search);
+const st = {
+  variant: params.get("variant") ?? "A",
+  theme: params.get("theme") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+  palette: params.get("palette") ?? "auto",
+  mark: params.get("mark") ?? "auto",
+  head: params.get("head") ?? "auto",
+};
+const fill = (sel, opts) => { sel.innerHTML = `<option value="auto">Variant's own</option>` + Object.entries(opts).map(([k, v]) => `<option value="${k}">${typeof v === "string" ? v : v.name}</option>`).join(""); };
+fill(document.getElementById("palette"), PALETTES);
+fill(document.getElementById("mark"), MARKS);
+fill(document.getElementById("head"), HEADS);
+const SURFACE_VARS = ["page", "sunken", "raised", "line", "fg", "muted", "accent", "raise-shadow",
+  "color-base-100", "color-base-200", "color-base-300", "color-base-content"];
+
+function apply() {
+  const v = VARIANTS.find(x => x.key === st.variant) ?? VARIANTS[0];
+  st.variant = v.key;
+  const palette = st.palette === "auto" ? v.palette : st.palette;
+  const mark = st.mark === "auto" ? v.mark : st.mark;
+  const head = st.head === "auto" ? v.head : st.head;
+  const root = document.documentElement;
+  root.dataset.theme = st.theme;
+  for (const k of SURFACE_VARS) root.style.removeProperty("--" + k);
+  const p = PALETTES[palette][st.theme];
+  if (p) {
+    const set = (k, val) => root.style.setProperty("--" + k, val);
+    set("page", p.page); set("sunken", p.sunken); set("raised", p.raised); set("line", p.line);
+    set("fg", p.fg); set("muted", p.muted); set("accent", p.accent); set("raise-shadow", p.shadow);
+    set("color-base-100", p.page); set("color-base-200", p.sunken); set("color-base-300", p.line); set("color-base-content", p.fg);
+  }
+  const board = document.getElementById("board");
+  const scroll = [board.scrollLeft, board.scrollTop];
+  board.className = `scroll-box ${v.cls} mark-${mark} head-${head}`;
+  board.innerHTML = v.render();
+  [board.scrollLeft, board.scrollTop] = scroll;
+  document.getElementById("vlabel").textContent = `${v.key} (${v.name})`;
+  document.getElementById("theme").textContent = st.theme === "dark" ? "☾ Dark" : "☀ Light";
+  document.getElementById("palette").value = st.palette;
+  document.getElementById("mark").value = st.mark;
+  document.getElementById("head").value = st.head;
+  document.getElementById("state").textContent =
+    `variant=${v.key} theme=${st.theme} palette=${palette}${st.palette === "auto" ? " (auto)" : ""} status=${mark}${st.mark === "auto" ? " (auto)" : ""} head=${head}${st.head === "auto" ? " (auto)" : ""}`;
+  const q = new URLSearchParams();
+  for (const [k, val] of Object.entries(st)) if (val !== "auto") q.set(k, val);
+  history.replaceState(null, "", "?" + q);
+}
+const step = d => { const i = VARIANTS.findIndex(x => x.key === st.variant); st.variant = VARIANTS[(i + d + VARIANTS.length) % VARIANTS.length].key; apply(); };
+document.getElementById("prev").onclick = () => step(-1);
+document.getElementById("next").onclick = () => step(1);
+document.getElementById("theme").onclick = () => { st.theme = st.theme === "dark" ? "light" : "dark"; apply(); };
+for (const k of ["palette", "mark", "head"]) document.getElementById(k).onchange = e => { st[k] = e.target.value; apply(); e.target.blur(); };
+addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") step(-1);
+  else if (e.key === "ArrowRight") step(1);
+  else if (e.key === "t") document.getElementById("theme").click();
+});
+apply();
+</script>
+</body>
+</html>
